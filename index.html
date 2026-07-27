@@ -1,1484 +1,1364 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Comprehensive Sorting Visualizer</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Algorithm Visualizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: #0f172a;
-        color: #f8fafc;
-      }
-
-      .array-bar {
-        box-shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      }
-
-      /* Smooth transitions for both position (swaps) and height (overwrites) */
-      .transition-position {
-        transition:
-          left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-          height 0.3s ease-in-out,
-          background-color 0.3s ease;
-      }
-
-      .marker-transition {
-        transition:
-          left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-          opacity 0.3s ease;
-      }
-
-      .pointer {
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        font-weight: bold;
-        font-size: 0.875rem;
-        z-index: 10;
-      }
-
-      .pointer-arrow {
-        width: 0;
-        height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-bottom: 8px solid;
-        margin-bottom: 4px;
-      }
-
-      /* Status styles for bars */
-      .bar-default {
-        background-color: #3b82f6;
-      } /* blue-500 */
-      .bar-comparing {
-        background-color: #eab308;
-      } /* yellow-500 */
-      .bar-swapping {
-        background-color: #a855f7;
-      } /* purple-500 */
-      .bar-sorted {
-        background-color: #22c55e;
-      } /* green-500 */
-      .bar-special {
-        background-color: #ef4444;
-      } /* red-500 (Pivot/Min/Root) */
-      .bar-inactive {
-        opacity: 0.3;
-      }
-
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1e293b;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
-      }
-    </style>
-  </head>
-  <body class="min-h-screen flex flex-col">
-    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
-      <header class="mb-6 text-center">
-        <h1
-          class="text-3xl md:text-4xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500"
-          id="main-title"
-        >
-          Algorithm Visualizer
-        </h1>
-        <p
-          class="text-slate-400 max-w-3xl mx-auto text-sm md:text-base"
-          id="main-desc"
-        >
-          Select an algorithm to learn how it works step-by-step.
-        </p>
-      </header>
-
-      <div class="flex flex-col lg:flex-row gap-6 flex-grow">
-        <!-- Left Column: Visualization & Controls -->
-        <div class="w-full lg:w-2/3 flex flex-col gap-6">
-          <!-- Controls (Top) -->
-          <div
-            class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700 shadow-xl flex flex-col gap-4"
-          >
-            <!-- Top Row: Algorithm Selection -->
-            <div class="flex flex-wrap items-center gap-4">
-              <label for="algo-select" class="font-semibold text-slate-300"
-                >Algorithm:</label
-              >
-              <select
-                id="algo-select"
-                class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 font-medium"
-              >
-                <option value="quick">Quick Sort (Hoare)</option>
-                <option value="bubble">Bubble Sort</option>
-                <option value="selection">Selection Sort</option>
-                <option value="insertion">Insertion Sort</option>
-                <option value="merge">Merge Sort</option>
-                <option value="heap">Heap Sort</option>
-                <option value="bucket">Bucket Sort</option>
-                <option value="radix">Radix Sort</option>
-              </select>
-            </div>
-
-            <div class="h-px bg-slate-700 w-full"></div>
-
-            <!-- Bottom Row: Array Generation & Playback -->
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex flex-wrap gap-2 items-center">
-                <button
-                  id="btn-reset"
-                  class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors border border-slate-600 text-sm whitespace-nowrap"
-                >
-                  Random Array
-                </button>
-                <div class="flex items-center gap-1">
-                  <input
-                    type="text"
-                    id="custom-array-input"
-                    placeholder="e.g. 45, 12, 89"
-                    class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 w-32 sm:w-40 placeholder-slate-500"
-                  />
-                  <button
-                    id="btn-load-custom"
-                    class="px-3 py-2 bg-slate-700 hover:bg-blue-600 rounded-lg font-medium transition-colors border border-slate-600 text-sm"
-                  >
-                    Load
-                  </button>
-                </div>
-              </div>
-
-              <div
-                class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-slate-700"
-              >
-                <button
-                  id="btn-step-prev"
-                  class="p-2 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
-                  title="Previous Step"
-                  disabled
-                >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M15 19l-7-7 7-7"
-                    ></path>
-                  </svg>
-                </button>
-
-                <button
-                  id="btn-play-pause"
-                  class="p-2 bg-blue-600 hover:bg-blue-500 rounded-md transition-colors text-white flex items-center justify-center w-8 h-8"
-                >
-                  <svg
-                    id="icon-play"
-                    class="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                      clip-rule="evenodd"
-                    ></path>
-                  </svg>
-                  <svg
-                    id="icon-pause"
-                    class="w-4 h-4 hidden"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
-                      clip-rule="evenodd"
-                    ></path>
-                  </svg>
-                </button>
-
-                <button
-                  id="btn-step-next"
-                  class="p-2 hover:bg-slate-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
-                  title="Next Step"
-                >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    ></path>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="flex flex-col">
-                <label for="speed-slider" class="text-slate-400 text-xs mb-1"
-                  >Speed</label
-                >
-                <input
-                  type="range"
-                  id="speed-slider"
-                  min="50"
-                  max="1500"
-                  value="600"
-                  class="w-24 accent-blue-500"
-                  dir="rtl"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Visualization Canvas -->
-          <div
-            class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl relative overflow-hidden flex-grow flex flex-col justify-between"
-            style="min-height: 400px"
-          >
-            <div
-              id="visualization-area"
-              class="relative w-full h-full flex-grow mt-4"
-            >
-              <!-- Indices Layer -->
-              <div
-                id="indices-container"
-                class="absolute top-0 left-0 w-full h-6 text-slate-400 font-mono text-xs sm:text-sm font-semibold"
-              ></div>
-
-              <!-- Array Items -->
-              <div
-                id="array-container"
-                class="absolute bottom-16 left-0 w-full top-8"
-              ></div>
-
-              <!-- Dynamic Pointers Layer -->
-              <div
-                id="markers-container"
-                class="absolute bottom-0 left-0 w-full h-14"
-              ></div>
-            </div>
-
-            <!-- Legend -->
-            <div
-              class="mt-4 flex flex-wrap justify-center gap-4 text-xs font-medium text-slate-300 bg-slate-900/50 p-2 rounded-lg"
-            >
-              <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bar-default"></div>
-                Standard
-              </div>
-              <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bar-comparing"></div>
-                Comparing/Active
-              </div>
-              <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bar-swapping"></div>
-                Modifying
-              </div>
-              <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bar-special"></div>
-                Target/Special
-              </div>
-              <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bar-sorted"></div>
-                Sorted
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Column: Explanations -->
-        <div class="w-full lg:w-1/3 flex flex-col gap-4">
-          <div
-            class="bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden flex flex-col h-full"
-          >
-            <div
-              class="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center"
-            >
-              <h2 class="font-semibold text-lg flex items-center gap-2">
-                <svg
-                  class="w-5 h-5 text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  ></path>
-                </svg>
-                Algorithm Step
-              </h2>
-              <span
-                id="step-counter"
-                class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300 font-mono"
-                >Step 0 / 0</span
-              >
-            </div>
-
-            <div class="p-5 flex-grow overflow-y-auto">
-              <div
-                id="explanation-text"
-                class="text-base md:text-lg leading-relaxed space-y-4"
-              >
-                <!-- Explanation injected here -->
-              </div>
-            </div>
-
-            <!-- Dynamic Variables Monitor -->
-            <div class="bg-slate-900 p-4 border-t border-slate-700">
-              <div
-                class="text-xs text-slate-400 mb-2 uppercase tracking-wider font-bold"
-              >
-                Variable Monitor
-              </div>
-              <div
-                id="variables-monitor"
-                class="grid grid-cols-2 md:grid-cols-3 gap-3 text-center"
-              >
-                <!-- Dynamically injected variables -->
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <footer style="text-align: center">&copy; Aryan A. Bhogayata</footer>
-
-    <script>
-      const ARRAY_SIZE = 12;
-      const MIN_VAL = 10;
-      const MAX_VAL = 99;
-      const GAP_PX = 8;
-
-      // Algorithm metadata for UI
-      const algorithms = {
-        quick: {
-          title: "Quick Sort (Hoare Partition)",
-          desc: "Picks the first element as a pivot. Scans from both ends (i and j), swapping elements that are on the wrong side of the pivot, until pointers cross.",
-          generator: generateQuickSortSteps,
-        },
-        bubble: {
-          title: "Bubble Sort",
-          desc: "Repeatedly steps through the list, compares adjacent elements and swaps them if they are in the wrong order. The largest elements 'bubble' to the top.",
-          generator: generateBubbleSortSteps,
-        },
-        selection: {
-          title: "Selection Sort",
-          desc: "Divides the input list into two parts: a sorted sublist and an unsorted sublist. Repeatedly finds the minimum element from the unsorted part and puts it at the beginning.",
-          generator: generateSelectionSortSteps,
-        },
-        insertion: {
-          title: "Insertion Sort",
-          desc: "Builds the final sorted array one item at a time. It takes each element and slides it backwards into its proper place among the already sorted elements.",
-          generator: generateInsertionSortSteps,
-        },
-        merge: {
-          title: "Merge Sort",
-          desc: "A divide-and-conquer algorithm that divides the array into halves, recursively sorts them, and then merges the sorted halves back together.",
-          generator: generateMergeSortSteps,
-        },
-        heap: {
-          title: "Heap Sort",
-          desc: "Converts the array into a Max-Heap structure, then repeatedly swaps the largest element (root) with the last element of the heap and reduces the heap size.",
-          generator: generateHeapSortSteps,
-        },
-        bucket: {
-          title: "Bucket Sort",
-          desc: "Distributes elements into a number of 'buckets' based on value. Each bucket is then sorted individually, and then they are gathered sequentially.",
-          generator: generateBucketSortSteps,
-        },
-        radix: {
-          title: "Radix Sort (LSD)",
-          desc: "Sorts numbers digit by digit, starting from the least significant digit (LSD) to the most significant, using a stable sort like counting sort underneath.",
-          generator: generateRadixSortSteps,
-        },
-      };
-
-      // Global State
-      let currentAlgoId = "quick";
-      let originalArray = []; // Array of objects {id, val}
-      let steps = [];
-      let currentStepIndex = -1;
-      let isPlaying = false;
-      let playInterval = null;
-      let speedMs = 600;
-
-      // DOM References
-      const arrayContainer = document.getElementById("array-container");
-      const indicesContainer = document.getElementById("indices-container");
-      const markersContainer = document.getElementById("markers-container");
-      const explanationText = document.getElementById("explanation-text");
-      const stepCounter = document.getElementById("step-counter");
-      const varsMonitor = document.getElementById("variables-monitor");
-      const algoSelect = document.getElementById("algo-select");
-      const mainTitle = document.getElementById("main-title");
-      const mainDesc = document.getElementById("main-desc");
-      const btnPlayPause = document.getElementById("btn-play-pause");
-      const iconPlay = document.getElementById("icon-play");
-      const iconPause = document.getElementById("icon-pause");
-
-      function init() {
-        setupEventListeners();
-        handleAlgoChange(); // Triggers array generation and step calculation
-      }
-
-      function setupEventListeners() {
-        document.getElementById("btn-reset").addEventListener("click", () => {
-          generateNewArray();
-          resetState();
-        });
-        document
-          .getElementById("btn-load-custom")
-          .addEventListener("click", loadCustomArray);
-        document
-          .getElementById("custom-array-input")
-          .addEventListener("keypress", (e) => {
-            if (e.key === "Enter") loadCustomArray();
-          });
-
-        algoSelect.addEventListener("change", (e) => {
-          currentAlgoId = e.target.value;
-          handleAlgoChange();
-        });
-
-        document
-          .getElementById("btn-step-next")
-          .addEventListener("click", () => {
-            pauseAnimation();
-            nextStep();
-          });
-        document
-          .getElementById("btn-step-prev")
-          .addEventListener("click", () => {
-            pauseAnimation();
-            prevStep();
-          });
-        btnPlayPause.addEventListener("click", togglePlay);
-
-        document
-          .getElementById("speed-slider")
-          .addEventListener("input", (e) => {
-            speedMs = parseInt(e.target.value);
-            if (isPlaying) {
-              pauseAnimation();
-              playAnimation();
-            }
-          });
-
-        window.addEventListener("resize", () => {
-          if (currentStepIndex >= 0 && currentStepIndex < steps.length) {
-            renderMarkers(steps[currentStepIndex].markers);
-          }
-        });
-      }
-
-      function handleAlgoChange() {
-        const meta = algorithms[currentAlgoId];
-        mainTitle.textContent = meta.title;
-        mainDesc.textContent = meta.desc;
-        if (originalArray.length === 0) {
-          generateNewArray();
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b; /* zinc-950 */
+            color: #f4f4f5; /* zinc-50 */
+            overflow-x: hidden;
         }
-        resetState();
-      }
+        
+        .shadow-glow {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+        }
 
-      function generateNewArray() {
+        .node-element {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-weight: 700;
+            color: white;
+            /* Universal smooth transition for morphing between bars and circles */
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.4s ease,
+                        height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        border-radius 0.4s ease,
+                        background-color 0.3s ease,
+                        transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                        font-size 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.18);
+        }
+
+        /* Layout-specific modifiers applied dynamically via JS */
+        .layout-linear {
+            align-items: flex-end;
+            padding-bottom: 0.5rem;
+            border-radius: 0.375rem 0.375rem 0 0;
+            transform: translateX(0); /* Standard left alignment */
+        }
+
+        .layout-tree {
+            width: 3rem !important;
+            height: 3rem !important;
+            border-radius: 9999px; /* Circle */
+            transform: translate(-50%, 50%); /* Centered on X and Y */
+            padding-bottom: 0;
+            z-index: 25;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), inset 0 -2px 4px rgba(0,0,0,0.3);
+        }
+
+        .layout-bucket {
+            border-radius: 0.375rem;
+            transform: translateX(0);
+        }
+
+        .color-default { background-color: #10b981; } /* emerald-500 */
+        .color-comparing { background-color: #fbbf24; } /* amber-400 */
+        .color-swapping { background-color: #ec4899; } /* pink-500 */
+        .color-sorted { background-color: #06b6d4; } /* cyan-500 */
+        .color-special { background-color: #f43f5e; } /* rose-500 */
+        .color-target { background-color: #a855f7; } /* purple-500 */
+        .color-visited { background-color: #6366f1; } /* indigo-500 */
+        .color-inactive { opacity: 0.25; filter: grayscale(50%); }
+
+        @keyframes animBubble {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .anim-bubble { animation: animBubble 0.4s ease-in-out infinite; z-index: 30; }
+
+        @keyframes animGlowMin {
+            0%, 100% { box-shadow: 0 0 5px #f43f5e; }
+            50% { box-shadow: 0 0 20px #f43f5e, inset 0 0 10px rgba(255,255,255,0.5); transform: scale(1.05); }
+        }
+        .anim-glow-min { animation: animGlowMin 0.8s infinite; z-index: 30; border: 1px solid #fda4af; }
+
+        .anim-lift {
+            transform: translateY(-20px) scale(1.05) !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7) !important;
+            z-index: 35 !important;
+            filter: brightness(1.2);
+        }
+
+        @keyframes animPivotPulse {
+            0% { outline: 2px solid transparent; outline-offset: 0px; }
+            50% { outline: 3px solid rgba(244, 63, 94, 0.8); outline-offset: 6px; }
+            100% { outline: 2px solid transparent; outline-offset: 10px; }
+        }
+        .anim-pivot { animation: animPivotPulse 1s infinite; z-index: 30; }
+
+        @keyframes animPop {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.5); background-color: #34d399; }
+            100% { filter: brightness(1); }
+        }
+        .anim-pop { animation: animPop 0.4s ease-out; z-index: 30; }
+        
+        @keyframes animPulseTarget {
+            0%, 100% { scale: 1; box-shadow: 0 0 10px #a855f7; }
+            50% { scale: 1.15; box-shadow: 0 0 30px #a855f7, inset 0 0 15px rgba(255,255,255,0.6); }
+        }
+        .anim-target { animation: animPulseTarget 1s infinite; z-index: 40 !important; }
+
+        .pointer {
+            position: absolute; display: flex; flex-direction: column; align-items: center;
+            font-weight: bold; font-size: 0.875rem; z-index: 40;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        }
+        .pointer-arrow {
+            width: 0; height: 0;
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-bottom: 8px solid; margin-bottom: 4px;
+        }
+        
+        .tree-line {
+            stroke-width: 3;
+            transition: stroke 0.3s ease, opacity 0.5s ease;
+            stroke-linecap: round;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<div class="container mx-auto px-4 py-6 flex-grow flex flex-col max-w-7xl">
+    
+    <header class="mb-6 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400" id="main-title">
+            Algorithm Visualizer
+        </h1>
+        <p class="text-zinc-400 max-w-3xl mx-auto text-sm md:text-base" id="main-desc">
+            Select a category and algorithm to learn how it works step-by-step.
+        </p>
+    </header>
+
+    <div class="flex flex-col xl:flex-row gap-6 flex-grow">
+        
+        <!-- Left Column: Visualization & Controls -->
+        <div class="w-full xl:w-2/3 flex flex-col gap-6">
+            
+            <!-- Controls (Top) -->
+            <div class="bg-zinc-900 rounded-xl p-4 md:p-5 border border-zinc-800 shadow-glow flex flex-col gap-4">
+                
+                <!-- Algorithm Selection Row -->
+                <div class="flex flex-wrap items-center gap-4 bg-zinc-950/50 p-3 rounded-lg border border-zinc-800/50">
+                    <div class="flex items-center gap-2">
+                        <label for="category-select" class="font-semibold text-zinc-300 text-sm uppercase tracking-wider">Mode:</label>
+                        <select id="category-select" class="bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-white focus:outline-none focus:border-emerald-500 font-medium text-sm">
+                            <option value="sort">Sorting</option>
+                            <option value="search">Searching</option>
+                        </select>
+                    </div>
+                    
+                    <svg class="w-4 h-4 text-zinc-600 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    
+                    <div class="flex items-center gap-2">
+                        <label for="algo-select" class="font-semibold text-zinc-300 text-sm uppercase tracking-wider">Algorithm:</label>
+                        <select id="algo-select" class="bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-emerald-400 focus:outline-none focus:border-emerald-500 font-bold text-sm">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Options (Heap Min/Max, Target Search) -->
+                    <div id="dynamic-options-container" class="ml-auto flex items-center gap-3">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Action Controls Row -->
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <button id="btn-reset" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-md font-medium transition-colors border border-zinc-700 text-sm whitespace-nowrap shadow-sm">
+                            Generate Random
+                        </button>
+                        <div class="flex items-center gap-1">
+                            <input type="text" id="custom-array-input" placeholder="e.g. 45, 12, 89" class="px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-md text-sm text-white focus:outline-none focus:border-emerald-500 w-32 sm:w-40 placeholder-zinc-600">
+                            <button id="btn-load-custom" class="px-3 py-2 bg-zinc-800 hover:bg-emerald-600 rounded-md font-medium transition-colors border border-zinc-700 text-sm">
+                                Load
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Playback Controls -->
+                    <div class="flex items-center gap-2 bg-zinc-950 p-1 rounded-md border border-zinc-800 shadow-inner">
+                        <button id="btn-step-prev" class="p-2 hover:bg-zinc-800 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400" title="Previous Step" disabled>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        
+                        <button id="btn-play-pause" class="p-2 bg-emerald-600 hover:bg-emerald-500 rounded transition-colors text-white flex items-center justify-center w-8 h-8 shadow-md">
+                            <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                            <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        </button>
+                        
+                        <button id="btn-step-next" class="p-2 hover:bg-zinc-800 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-zinc-400" title="Next Step">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- Speed -->
+                    <div class="flex flex-col justify-center">
+                        <label for="speed-slider" class="text-zinc-500 text-[10px] uppercase font-bold mb-1 tracking-wider">Anim Speed</label>
+                        <input type="range" id="speed-slider" min="50" max="1500" value="600" class="w-24 accent-emerald-500" dir="rtl">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-glow relative overflow-hidden flex-grow flex flex-col justify-between" style="min-height: 550px;">
+                
+                <div id="visualization-area" class="relative w-full h-full flex-grow mt-2">
+                    
+                    <!-- SVG Overlay for Tree Edges -->
+                    <svg id="tree-svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
+
+                    <!-- Fixed Layer for top Indices (Linear mode only) -->
+                    <div id="indices-container" class="absolute top-0 left-0 w-full h-6 text-zinc-500 font-mono text-xs sm:text-sm font-semibold transition-all duration-500 z-20"></div>
+                    
+                    <!-- Buckets Background (For Radix/Bucket Sort) -->
+                    <div id="buckets-bg-container" class="absolute bottom-0 left-0 w-full h-[35%] flex border-t-2 border-zinc-700/50 pt-1 transition-opacity duration-500 opacity-0 pointer-events-none z-0">
+                        <!-- Buckets injected here -->
+                    </div>
+
+                    <!-- Array Elements -->
+                    <div id="array-container" class="absolute inset-0 z-20"></div>
+
+                    <!-- Dynamic Pointers -->
+                    <div id="markers-container" class="absolute inset-0 pointer-events-none z-30"></div>
+
+                    <!-- Data Structure Visualization (Stack/Queue) -->
+                    <div id="ds-container" class="absolute top-2 right-2 bg-zinc-950/90 border border-zinc-700/50 rounded-lg p-3 hidden flex-col w-28 shadow-xl z-40 transition-opacity">
+                        <div id="ds-title" class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center border-b border-zinc-800 pb-1 mb-2"></div>
+                        <div id="ds-elements" class="flex flex-col gap-1 overflow-y-auto max-h-[250px] items-center">
+                            <!-- Elements injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Variables Monitor -->
+                <div class="bg-zinc-950 p-4 border-t border-zinc-800">
+                    <div class="text-[10px] text-zinc-500 mb-2 uppercase tracking-widest font-bold">Variable Monitor</div>
+                    <div id="variables-monitor" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
+                        <!-- Dynamically injected variables -->
+                    </div>
+                </div>
+
+                <!-- Complexity Monitor -->
+                <div class="bg-zinc-950 p-4 border-t border-zinc-800">
+                    <div class="text-[10px] text-zinc-500 mb-3 uppercase tracking-widest font-bold">Complexity (Time & Space)</div>
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                        <div class="flex justify-between items-center bg-zinc-900 px-2 py-1 rounded border border-zinc-800/50"><span class="text-zinc-400 text-xs">Best</span> <span id="comp-best" class="font-mono text-emerald-400 font-bold"></span></div>
+                        <div class="flex justify-between items-center bg-zinc-900 px-2 py-1 rounded border border-zinc-800/50"><span class="text-zinc-400 text-xs">Avg</span> <span id="comp-avg" class="font-mono text-amber-400 font-bold"></span></div>
+                        <div class="flex justify-between items-center bg-zinc-900 px-2 py-1 rounded border border-zinc-800/50"><span class="text-zinc-400 text-xs">Worst</span> <span id="comp-worst" class="font-mono text-rose-400 font-bold"></span></div>
+                        <div class="flex justify-between items-center bg-zinc-900 px-2 py-1 rounded border border-zinc-800/50"><span class="text-zinc-400 text-xs">Space</span> <span id="comp-space" class="font-mono text-cyan-400 font-bold"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Explanations -->
+        <div class="w-full xl:w-1/3 flex flex-col gap-6">
+            <div class="bg-zinc-900 rounded-xl border border-zinc-800 shadow-glow overflow-hidden flex flex-col h-full">
+                <div class="bg-zinc-950 p-4 border-b border-zinc-800 flex justify-between items-center">
+                    <h2 class="font-semibold text-lg flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Algorithm Step
+                    </h2>
+                    <span id="step-counter" class="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300 font-mono">Step 0 / 0</span>
+                </div>
+                
+                <!-- Dynamic Text Explanation -->
+                <div class="p-6 flex-grow overflow-y-auto max-h-[600px]">
+                    <div id="explanation-text" class="text-base md:text-sm leading-relaxed space-y-4 text-zinc-300">
+                        <p>Select an algorithm and click <strong class="text-emerald-400">Play</strong> to begin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const ARRAY_SIZE = 12;
+    const MIN_VAL = 0;
+    const MAX_VAL = 199;
+    const GAP_PX = 8;
+    
+    // Engine Data Definitions
+    const registry = {
+        sort: {
+            'quick': { title: "Quick Sort (Hoare)", generator: generateQuickSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n²)", space: "O(log n)", desc: "Picks a pivot, partitions elements smaller to left and larger to right." },
+            'bubble': { title: "Bubble Sort", generator: generateBubbleSortSteps, best: "O(n)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Repeatedly swaps adjacent elements if they are in the wrong order." },
+            'selection': { title: "Selection Sort", generator: generateSelectionSortSteps, best: "O(n²)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Repeatedly finds the minimum element and moves it to the sorted front." },
+            'insertion': { title: "Insertion Sort", generator: generateInsertionSortSteps, best: "O(n)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Builds the sorted array one item at a time by sliding elements back." },
+            'merge': { title: "Merge Sort", generator: generateMergeSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(n)", desc: "Recursively divides array into halves and merges them back in sorted order. Notice how blocks drop down to show sub-arrays!" },
+            'heap': { title: "Heap Sort", generator: generateHeapSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(1)", desc: "Builds a Binary Heap (Tree), then repeatedly extracts the root to sort." },
+            'bucket': { title: "Bucket Sort", generator: generateBucketSortSteps, best: "O(n+k)", avg: "O(n+k)", worst: "O(n²)", space: "O(n+k)", desc: "Distributes elements into distinct horizontal buckets, sorts them, and gathers them." },
+            'radix': { title: "Radix Sort (LSD)", generator: generateRadixSortSteps, best: "O(nk)", avg: "O(nk)", worst: "O(nk)", space: "O(n+k)", desc: "Sorts numbers digit by digit using vertical buckets (queues)." }
+        },
+        search: {
+            'linear': { title: "Linear Search", generator: generateLinearSearchSteps, best: "O(1)", avg: "O(n)", worst: "O(n)", space: "O(1)", desc: "Scans every element from left to right until the target is found." },
+            'binary': { title: "Binary Search", generator: generateBinarySearchSteps, best: "O(1)", avg: "O(log n)", worst: "O(log n)", space: "O(1)", desc: "Efficiently searches a SORTED array by repeatedly dividing the search interval in half." },
+            'dfs': { title: "Depth-First Search", generator: generateDFSSteps, best: "O(1)", avg: "O(V+E)", worst: "O(V)", space: "O(V)", desc: "Treats array as a Tree and explores as deep as possible along each branch before backtracking." },
+            'bfs': { title: "Breadth-First Search", generator: generateBFSSteps, best: "O(1)", avg: "O(V+E)", worst: "O(V)", space: "O(V)", desc: "Treats array as a Tree and explores it level by level." }
+        }
+    };
+
+    // Global State
+    let currentCategory = 'sort';
+    let currentAlgoId = 'quick';
+    let originalArray = []; 
+    let steps = [];
+    let currentStepIndex = -1;
+    let isPlaying = false;
+    let playInterval = null;
+    let speedMs = 600;
+    
+    // Search specific state
+    let searchTargetValue = null;
+    let userDefinedTarget = false;
+
+    // DOM Elements
+    const arrayContainer = document.getElementById('array-container');
+    const indicesContainer = document.getElementById('indices-container');
+    const markersContainer = document.getElementById('markers-container');
+    const bucketsBgContainer = document.getElementById('buckets-bg-container');
+    const treeSvgLayer = document.getElementById('tree-svg-layer');
+    const explanationText = document.getElementById('explanation-text');
+    const stepCounter = document.getElementById('step-counter');
+    const varsMonitor = document.getElementById('variables-monitor');
+    const dynamicOptionsContainer = document.getElementById('dynamic-options-container');
+    const algoSelect = document.getElementById('algo-select');
+    const categorySelect = document.getElementById('category-select');
+
+    function init() {
+        createBucketBackgrounds();
+        setupEventListeners();
+        populateAlgoDropdown();
+        handleAlgoChange();
+    }
+
+    function createBucketBackgrounds() {
+        bucketsBgContainer.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const col = document.createElement('div');
+            col.className = 'flex-1 border-r border-zinc-800/50 flex flex-col items-center justify-end pb-1 last:border-r-0 relative';
+            col.innerHTML = `<span class="text-zinc-600 font-mono text-xs absolute bottom-0">B${i}</span>`;
+            bucketsBgContainer.appendChild(col);
+        }
+    }
+
+    function setupEventListeners() {
+        document.getElementById('btn-reset').addEventListener('click', () => { generateNewArray(); resetState(); });
+        document.getElementById('btn-load-custom').addEventListener('click', loadCustomArray);
+        document.getElementById('custom-array-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') loadCustomArray(); });
+        
+        categorySelect.addEventListener('change', (e) => {
+            currentCategory = e.target.value;
+            populateAlgoDropdown();
+            handleAlgoChange();
+        });
+
+        algoSelect.addEventListener('change', (e) => {
+            currentAlgoId = e.target.value;
+            handleAlgoChange();
+        });
+
+        document.getElementById('btn-step-next').addEventListener('click', () => { pauseAnimation(); nextStep(); });
+        document.getElementById('btn-step-prev').addEventListener('click', () => { pauseAnimation(); prevStep(); });
+        document.getElementById('btn-play-pause').addEventListener('click', togglePlay);
+        
+        document.getElementById('speed-slider').addEventListener('input', (e) => {
+            speedMs = parseInt(e.target.value);
+            if (isPlaying) { pauseAnimation(); playAnimation(); }
+        });
+
+        window.addEventListener('resize', () => {
+            if (currentStepIndex >= 0 && currentStepIndex < steps.length) renderStep(currentStepIndex);
+        });
+    }
+
+    function populateAlgoDropdown() {
+        algoSelect.innerHTML = '';
+        const algos = registry[currentCategory];
+        for (const [key, meta] of Object.entries(algos)) {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = meta.title;
+            algoSelect.appendChild(opt);
+        }
+        currentAlgoId = Object.keys(algos)[0];
+    }
+
+    function buildDynamicOptions() {
+        dynamicOptionsContainer.innerHTML = '';
+        
+        if (currentAlgoId === 'heap') {
+            dynamicOptionsContainer.innerHTML = `
+                <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5">
+                    <label class="text-zinc-400 text-xs uppercase font-bold">Type:</label>
+                    <select id="heap-type-select" class="bg-transparent text-emerald-400 text-sm font-bold focus:outline-none cursor-pointer">
+                        <option value="max">Max Heap</option>
+                        <option value="min">Min Heap</option>
+                    </select>
+                </div>
+            `;
+            document.getElementById('heap-type-select').addEventListener('change', resetState);
+        } else if (currentCategory === 'search') {
+            dynamicOptionsContainer.innerHTML = `
+                <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5">
+                    <label for="search-target-input" class="text-zinc-400 text-xs uppercase font-bold">Target:</label>
+                    <input type="number" id="search-target-input" class="bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-purple-400 font-mono font-bold text-sm w-16 text-center focus:outline-none focus:border-purple-500" placeholder="??">
+                    <button id="btn-set-target" class="px-2 py-0.5 bg-zinc-800 hover:bg-purple-600 rounded text-xs text-white transition-colors border border-zinc-700">Set</button>
+                </div>
+            `;
+            
+            document.getElementById('btn-set-target').addEventListener('click', () => {
+                const val = parseInt(document.getElementById('search-target-input').value, 10);
+                if (!isNaN(val)) {
+                    searchTargetValue = val;
+                    userDefinedTarget = true;
+                    resetState();
+                }
+            });
+            
+            document.getElementById('search-target-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') document.getElementById('btn-set-target').click();
+            });
+        }
+    }
+
+    function handleAlgoChange() {
+        const meta = registry[currentCategory][currentAlgoId];
+        document.getElementById('main-title').textContent = meta.title;
+        document.getElementById('main-desc').textContent = meta.desc;
+        
+        document.getElementById('comp-best').innerHTML = meta.best;
+        document.getElementById('comp-avg').innerHTML = meta.avg;
+        document.getElementById('comp-worst').innerHTML = meta.worst;
+        document.getElementById('comp-space').innerHTML = meta.space;
+
+        buildDynamicOptions();
+
+        if (originalArray.length === 0) generateNewArray();
+        resetState();
+    }
+
+    function generateNewArray() {
         originalArray = [];
         for (let i = 0; i < ARRAY_SIZE; i++) {
-          originalArray.push({
-            id: `block-${Date.now()}-${i}`,
-            val: Math.floor(Math.random() * (MAX_VAL - MIN_VAL + 1)) + MIN_VAL,
-          });
+            originalArray.push({
+                id: `block-${Date.now()}-${i}`,
+                val: Math.floor(Math.random() * (MAX_VAL - MIN_VAL + 1)) + MIN_VAL
+            });
         }
-        document.getElementById("custom-array-input").value = "";
-      }
+        document.getElementById('custom-array-input').value = "";
+        userDefinedTarget = false;
+    }
 
-      function loadCustomArray() {
-        const inputVal = document.getElementById("custom-array-input").value;
+    function loadCustomArray() {
+        const inputVal = document.getElementById('custom-array-input').value;
         if (!inputVal) return;
-        const parsedArray = inputVal
-          .split(",")
-          .map((item) => parseInt(item.trim(), 10))
-          .filter((item) => !isNaN(item) && item >= 0);
-
+        const parsedArray = inputVal.split(',').map(item => parseInt(item.trim(), 10)).filter(item => !isNaN(item) && item >= 0);
+        
         if (parsedArray.length === 0 || parsedArray.length > 20) {
-          explanationText.innerHTML = `<p class="text-red-400 font-medium">Invalid input. Please enter 1-20 positive numbers separated by commas.</p>`;
-          return;
+            explanationText.innerHTML = `<p class="text-rose-400 font-medium">Invalid input. Enter 1-20 positive numbers separated by commas.</p>`;
+            return;
         }
 
-        originalArray = parsedArray.map((val, idx) => ({
-          id: `custom-${Date.now()}-${idx}`,
-          val: val,
-        }));
+        originalArray = parsedArray.map((val, idx) => ({ id: `custom-${Date.now()}-${idx}`, val: val }));
+        userDefinedTarget = false;
         resetState();
-      }
+    }
 
-      function resetState() {
+    function resetState() {
         pauseAnimation();
         steps = [];
         currentStepIndex = -1;
-
-        // Ensure DOM elements start fresh
-        renderInitialDOM(originalArray);
-
-        // Generate steps using selected algorithm
-        algorithms[currentAlgoId].generator([...originalArray]);
-
-        document.getElementById("btn-step-prev").disabled = true;
-        document.getElementById("btn-step-next").disabled = false;
-        stepCounter.textContent = `Step 0 / ${steps.length}`;
-        explanationText.innerHTML = `<p>Ready to execute <strong class="text-blue-400">${algorithms[currentAlgoId].title}</strong>.</p><p>Click Play or Next Step.</p>`;
-        varsMonitor.innerHTML = "";
-      }
-
-      // Helper to record a snapshot of the algorithm's state
-      function record(
-        arr,
-        activeIndices,
-        sortedIndices,
-        specialIndices,
-        markers,
-        msg,
-        action,
-      ) {
-        // Deep copy the array state (preserving ID to value mapping)
-        const arrSnapshot = arr.map((item) => ({ id: item.id, val: item.val }));
-        steps.push({
-          array: arrSnapshot,
-          activeIndices: activeIndices || [], // Indices currently being processed (yellow)
-          sortedIndices: new Set(sortedIndices), // Indices known to be sorted (green)
-          specialIndices: specialIndices || [], // Special elements like Pivot/Min (red)
-          markers: markers || [], // Pointers (e.g., {label: 'i', idx: 2, color: '#c084fc'})
-          message: msg,
-          action: action || "idle", // 'swap', 'compare', 'overwrite'
-        });
-      }
-
-      function swap(arr, i, j) {
-        let temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-      }
-
-      function generateQuickSortSteps(arr) {
-        let sorted = new Set();
-
-        function partition(low, high) {
-          let pivotVal = arr[low].val;
-          let i = low - 1;
-          let j = high + 1;
-
-          record(
-            arr,
-            [],
-            sorted,
-            [low],
-            [{ label: "P", idx: low, color: "#f87171" }],
-            `Partition range [${low} to ${high}]. Chosen Pivot is <span class="font-mono text-red-400">${pivotVal}</span>.`,
-            "idle",
-          );
-
-          while (true) {
-            do {
-              i++;
-              record(
-                arr,
-                [i],
-                sorted,
-                [low],
-                [
-                  { label: "P", idx: low, color: "#f87171" },
-                  { label: "i", idx: i, color: "#c084fc" },
-                  { label: "j", idx: j, color: "#fbbf24" },
-                ],
-                `Scanning right with <span class="text-purple-400 font-bold">i</span>. Is ${arr[i].val} >= Pivot (${pivotVal})?`,
-                "compare",
-              );
-            } while (arr[i].val < pivotVal);
-
-            do {
-              j--;
-              record(
-                arr,
-                [j],
-                sorted,
-                [low],
-                [
-                  { label: "P", idx: low, color: "#f87171" },
-                  { label: "i", idx: i, color: "#c084fc" },
-                  { label: "j", idx: j, color: "#fbbf24" },
-                ],
-                `Scanning left with <span class="text-amber-400 font-bold">j</span>. Is ${arr[j].val} <= Pivot (${pivotVal})?`,
-                "compare",
-              );
-            } while (arr[j].val > pivotVal);
-
-            if (i >= j) {
-              record(
-                arr,
-                [],
-                sorted,
-                [low],
-                [
-                  { label: "P", idx: low, color: "#f87171" },
-                  { label: "i", idx: i, color: "#c084fc" },
-                  { label: "j", idx: j, color: "#fbbf24" },
-                ],
-                `<span class="text-purple-400">i</span> (${i}) crossed/met <span class="text-amber-400">j</span> (${j}). Partition complete at index ${j}.`,
-                "idle",
-              );
-              return j;
+        
+        let workingArray = [...originalArray];
+        
+        // Handle Search Prerequisites
+        if (currentCategory === 'search') {
+            if (currentAlgoId === 'binary') {
+                // Binary search requires sorted array. Sort it first in place visually.
+                workingArray.sort((a,b) => a.val - b.val);
+                originalArray = [...workingArray]; // overwrite original for search visually
             }
-
-            record(
-              arr,
-              [i, j],
-              sorted,
-              [low],
-              [
-                { label: "P", idx: low, color: "#f87171" },
-                { label: "i", idx: i, color: "#c084fc" },
-                { label: "j", idx: j, color: "#fbbf24" },
-              ],
-              `Found elements on wrong side of pivot. Swapping them.`,
-              "idle",
-            );
-            swap(arr, i, j);
-            record(
-              arr,
-              [i, j],
-              sorted,
-              [low],
-              [
-                { label: "P", idx: low, color: "#f87171" },
-                { label: "i", idx: i, color: "#c084fc" },
-                { label: "j", idx: j, color: "#fbbf24" },
-              ],
-              `Swapped elements at i and j.`,
-              "swap",
-            );
-          }
+            
+            if (!userDefinedTarget || searchTargetValue === null) {
+                // Pick a random target from the array, or occasionally a random missing number
+                if (Math.random() > 0.15) {
+                    searchTargetValue = workingArray[Math.floor(Math.random() * workingArray.length)].val;
+                } else {
+                    searchTargetValue = Math.floor(Math.random() * (MAX_VAL - MIN_VAL + 1)) + MIN_VAL;
+                }
+            }
+            
+            const tgtInput = document.getElementById('search-target-input');
+            if (tgtInput) tgtInput.value = searchTargetValue;
         }
 
+        renderInitialDOM(workingArray);
+        
+        // Execute generator to build steps array
+        registry[currentCategory][currentAlgoId].generator(workingArray);
+        
+        document.getElementById('btn-step-prev').disabled = true;
+        document.getElementById('btn-step-next').disabled = false;
+        stepCounter.textContent = `Step 0 / ${steps.length}`;
+        explanationText.innerHTML = `<p>Ready to execute <strong class="text-emerald-400">${registry[currentCategory][currentAlgoId].title}</strong>.</p><p>Click Play or Next Step.</p>`;
+        varsMonitor.innerHTML = '';
+        treeSvgLayer.innerHTML = ''; // clear edges
+    }
+
+    // The Master Record Function that takes a snapshot of everything
+    function record(arr, activeIndices, sortedIndices, specialIndices, markers, msg, action, layoutConfig = null) {
+        const arrSnapshot = arr.map(item => item ? { ...item } : null); // Deep copy of item objects which might include layout overrides like yLevel
+        
+        // Deep copy layout config if complex
+        let lcCopy = null;
+        if (layoutConfig && typeof layoutConfig === 'object') {
+            if (layoutConfig.type === 'buckets') {
+                lcCopy = { type: 'buckets', mode: layoutConfig.mode, buckets: layoutConfig.buckets.map(b => b.map(item => ({...item}))) };
+            } else if (layoutConfig.type === 'tree') {
+                lcCopy = { type: 'tree', edges: layoutConfig.edges ? [...layoutConfig.edges] : [] };
+            }
+        } else if (typeof layoutConfig === 'string') {
+            lcCopy = { type: layoutConfig }; // e.g., 'merge'
+        }
+
+        steps.push({
+            array: arrSnapshot,
+            activeIndices: activeIndices || [],
+            sortedIndices: new Set(sortedIndices),
+            specialIndices: specialIndices || [],
+            markers: markers || [],
+            message: msg,
+            action: action || 'idle',
+            layout: lcCopy || { type: 'linear' },
+            visitedIndices: new Set() // For search algos
+        });
+    }
+    
+    // For search tracking (Now tracking Stack/Queue structures)
+    function recordSearch(arr, visited, active, foundIdx, markers, msg, action, layoutConfig = null, dsState = null) {
+        let step = steps.length > 0 ? Object.assign({}, steps[steps.length-1]) : { sortedIndices: new Set(), specialIndices: [] };
+        
+        steps.push({
+            array: arr.map(item => ({...item})),
+            activeIndices: active || [],
+            sortedIndices: new Set(),
+            specialIndices: foundIdx !== -1 ? [foundIdx] : [],
+            visitedIndices: new Set(visited),
+            markers: markers || [],
+            message: msg,
+            action: action || 'idle',
+            layout: layoutConfig || { type: 'linear' },
+            dsState: dsState
+        });
+    }
+
+    function swap(arr, i, j) { let temp = arr[i]; arr[i] = arr[j]; arr[j] = temp; }
+
+    function generateQuickSortSteps(arr) {
+        let sorted = new Set();
+        function partition(low, high) {
+            let pivotVal = arr[low].val; let i = low - 1, j = high + 1;
+            record(arr, [], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}], `Partition range [${low} to ${high}]. Chosen Pivot is <span class="font-mono text-rose-400">${pivotVal}</span>.`, 'idle');
+            while (true) {
+                do {
+                    i++; record(arr, [i], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}, {label: 'i', idx: i, color: '#06b6d4'}, {label: 'j', idx: j<arr.length?j:-1, color: '#fbbf24'}], `Scanning right with <span class="text-cyan-400 font-bold">i</span>. Is ${arr[i].val} >= Pivot (${pivotVal})?`, 'compare');
+                } while (arr[i].val < pivotVal);
+                do {
+                    j--; record(arr, [j], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}, {label: 'i', idx: i, color: '#06b6d4'}, {label: 'j', idx: j, color: '#fbbf24'}], `Scanning left with <span class="text-amber-400 font-bold">j</span>. Is ${arr[j].val} <= Pivot (${pivotVal})?`, 'compare');
+                } while (arr[j].val > pivotVal);
+                if (i >= j) {
+                     record(arr, [], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}, {label: 'i', idx: i, color: '#06b6d4'}, {label: 'j', idx: j, color: '#fbbf24'}], `Pointers crossed. Partition complete.`, 'idle');
+                    return j;
+                }
+                record(arr, [i, j], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}, {label: 'i', idx: i, color: '#06b6d4'}, {label: 'j', idx: j, color: '#fbbf24'}], `Elements on wrong side. Swapping them.`, 'idle');
+                swap(arr, i, j);
+                record(arr, [i, j], sorted, [low], [{label: 'P', idx: low, color: '#f43f5e'}, {label: 'i', idx: i, color: '#06b6d4'}, {label: 'j', idx: j, color: '#fbbf24'}], `Swapped.`, 'swap');
+            }
+        }
         function quickSort(low, high) {
-          if (low < high) {
-            let pi = partition(low, high);
-            quickSort(low, pi);
-            quickSort(pi + 1, high);
-          } else if (low === high) {
-            sorted.add(low);
-          }
+            if (low < high) {
+                let pi = partition(low, high);
+                quickSort(low, pi); quickSort(pi + 1, high);
+            } else if (low === high) sorted.add(low);
         }
         quickSort(0, arr.length - 1);
-        for (let k = 0; k < arr.length; k++) sorted.add(k);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Quick Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        for(let k=0; k<arr.length; k++) sorted.add(k);
+        record(arr, [], sorted, [], [], `<strong>Quick Sort Complete!</strong>`, 'complete');
+    }
 
-      function generateBubbleSortSteps(arr) {
-        let sorted = new Set();
-        let n = arr.length;
+    function generateBubbleSortSteps(arr) {
+        let sorted = new Set(); let n = arr.length;
         for (let i = 0; i < n - 1; i++) {
-          for (let j = 0; j < n - i - 1; j++) {
-            let m = [
-              { label: "j", idx: j, color: "#fbbf24" },
-              { label: "j+1", idx: j + 1, color: "#c084fc" },
-            ];
-            record(
-              arr,
-              [j, j + 1],
-              sorted,
-              [],
-              m,
-              `Comparing elements at index ${j} and ${j + 1}.`,
-              "compare",
-            );
-            if (arr[j].val > arr[j + 1].val) {
-              swap(arr, j, j + 1);
-              record(
-                arr,
-                [j, j + 1],
-                sorted,
-                [],
-                m,
-                `<span class="font-mono">${arr[j + 1].val}</span> > <span class="font-mono">${arr[j].val}</span>, so we swap them.`,
-                "swap",
-              );
+            for (let j = 0; j < n - i - 1; j++) {
+                let m = [{label: 'j', idx: j, color: '#fbbf24'}, {label: 'j+1', idx: j+1, color: '#06b6d4'}];
+                record(arr, [j, j+1], sorted, [], m, `Comparing elements at index ${j} and ${j+1}.`, 'compare');
+                if (arr[j].val > arr[j+1].val) {
+                    swap(arr, j, j+1); record(arr, [j, j+1], sorted, [], m, `Swapping elements out of order.`, 'swap');
+                }
             }
-          }
-          sorted.add(n - i - 1);
-          record(
-            arr,
-            [],
-            sorted,
-            [],
-            [],
-            `Largest element bubbled to the end.`,
-            "idle",
-          );
+            sorted.add(n - i - 1); record(arr, [], sorted, [], [], `Largest element bubbled to end.`, 'idle');
         }
-        sorted.add(0);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Bubble Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        sorted.add(0); record(arr, [], sorted, [], [], `<strong>Bubble Sort Complete!</strong>`, 'complete');
+    }
 
-      function generateSelectionSortSteps(arr) {
-        let sorted = new Set();
-        let n = arr.length;
+    function generateSelectionSortSteps(arr) {
+        let sorted = new Set(); let n = arr.length;
         for (let i = 0; i < n - 1; i++) {
-          let minIdx = i;
-          let m = [
-            { label: "i", idx: i, color: "#22c55e" },
-            { label: "Min", idx: minIdx, color: "#f87171" },
-          ];
-          record(
-            arr,
-            [i],
-            sorted,
-            [minIdx],
-            m,
-            `Starting pass ${i}. Assuming min is at index ${i}.`,
-            "idle",
-          );
-
-          for (let j = i + 1; j < n; j++) {
-            m = [
-              { label: "i", idx: i, color: "#22c55e" },
-              { label: "Min", idx: minIdx, color: "#f87171" },
-              { label: "j", idx: j, color: "#fbbf24" },
-            ];
-            record(
-              arr,
-              [j],
-              sorted,
-              [minIdx],
-              m,
-              `Scanning with j... comparing ${arr[j].val} to current min ${arr[minIdx].val}.`,
-              "compare",
-            );
-
-            if (arr[j].val < arr[minIdx].val) {
-              minIdx = j;
-              m = [
-                { label: "i", idx: i, color: "#22c55e" },
-                { label: "Min", idx: minIdx, color: "#f87171" },
-                { label: "j", idx: j, color: "#fbbf24" },
-              ];
-              record(
-                arr,
-                [],
-                sorted,
-                [minIdx],
-                m,
-                `Found new minimum: <span class="font-mono">${arr[minIdx].val}</span> at index ${minIdx}.`,
-                "idle",
-              );
+            let minIdx = i;
+            let m = [{label: 'i', idx: i, color: '#06b6d4'}, {label: 'Min', idx: minIdx, color: '#f43f5e'}];
+            record(arr, [i], sorted, [minIdx], m, `Starting pass. Assuming min is at index ${i}.`, 'idle');
+            for (let j = i + 1; j < n; j++) {
+                m = [{label: 'i', idx: i, color: '#06b6d4'}, {label: 'Min', idx: minIdx, color: '#f43f5e'}, {label: 'j', idx: j, color: '#fbbf24'}];
+                record(arr, [j], sorted, [minIdx], m, `Scanning... comparing ${arr[j].val} to current min ${arr[minIdx].val}.`, 'compare');
+                if (arr[j].val < arr[minIdx].val) {
+                    minIdx = j; m = [{label: 'i', idx: i, color: '#06b6d4'}, {label: 'Min', idx: minIdx, color: '#f43f5e'}, {label: 'j', idx: j, color: '#fbbf24'}];
+                    record(arr, [], sorted, [minIdx], m, `Found new minimum: <span class="font-mono">${arr[minIdx].val}</span>.`, 'idle');
+                }
             }
-          }
-          if (minIdx !== i) {
-            m = [
-              { label: "i", idx: i, color: "#22c55e" },
-              { label: "Min", idx: minIdx, color: "#f87171" },
-            ];
-            record(
-              arr,
-              [i, minIdx],
-              sorted,
-              [],
-              m,
-              `Pass complete. Swapping current index ${i} with min at ${minIdx}.`,
-              "idle",
-            );
-            swap(arr, i, minIdx);
-            record(arr, [i, minIdx], sorted, [], m, `Swapped.`, "swap");
-          }
-          sorted.add(i);
+            if (minIdx !== i) {
+                m = [{label: 'i', idx: i, color: '#06b6d4'}, {label: 'Min', idx: minIdx, color: '#f43f5e'}];
+                record(arr, [i, minIdx], sorted, [], m, `Swapping current index ${i} with min at ${minIdx}.`, 'idle');
+                swap(arr, i, minIdx); record(arr, [i, minIdx], sorted, [], m, `Swapped.`, 'swap');
+            }
+            sorted.add(i);
         }
-        sorted.add(n - 1);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Selection Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        sorted.add(n - 1); record(arr, [], sorted, [], [], `<strong>Selection Sort Complete!</strong>`, 'complete');
+    }
 
-      function generateInsertionSortSteps(arr) {
-        let sorted = new Set([0]); // First element is considered sorted initially
-        let n = arr.length;
+    function generateInsertionSortSteps(arr) {
+        let sorted = new Set([0]); let n = arr.length;
         for (let i = 1; i < n; i++) {
-          let j = i;
-          let m = [{ label: "i", idx: i, color: "#f87171" }];
-          record(
-            arr,
-            [i],
-            sorted,
-            [i],
-            m,
-            `Taking element <span class="font-mono">${arr[i].val}</span> to insert into sorted portion.`,
-            "idle",
-          );
-
-          // We use adjacent swaps to visually mimic insertion for the blocks
-          while (j > 0 && arr[j - 1].val > arr[j].val) {
-            m = [
-              { label: "cmp", idx: j - 1, color: "#fbbf24" },
-              { label: "mv", idx: j, color: "#c084fc" },
-            ];
-            record(
-              arr,
-              [j - 1, j],
-              sorted,
-              [],
-              m,
-              `${arr[j - 1].val} > ${arr[j].val}, swapping backwards.`,
-              "compare",
-            );
-            swap(arr, j, j - 1);
-            record(arr, [j - 1, j], sorted, [], m, `Moved left.`, "swap");
-            j--;
-          }
-          sorted.add(i); // Update full sorted boundary visually
-          record(
-            arr,
-            [],
-            sorted,
-            [],
-            [],
-            `Element placed in correct sorted order.`,
-            "idle",
-          );
+            let j = i; let m = [{label: 'i', idx: i, color: '#f43f5e'}];
+            record(arr, [i], sorted, [i], m, `Taking element <span class="font-mono">${arr[i].val}</span> to insert.`, 'idle');
+            while (j > 0 && arr[j - 1].val > arr[j].val) {
+                m = [{label: 'cmp', idx: j-1, color: '#fbbf24'}, {label: 'mv', idx: j, color: '#06b6d4'}];
+                record(arr, [j-1, j], sorted, [], m, `${arr[j-1].val} > ${arr[j].val}, swapping backwards.`, 'compare');
+                swap(arr, j, j - 1); record(arr, [j-1, j], sorted, [], m, `Moved left.`, 'swap');
+                j--;
+            }
+            sorted.add(i); record(arr, [], sorted, [], [], `Element placed in correct order.`, 'idle');
         }
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Insertion Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        record(arr, [], sorted, [], [], `<strong>Insertion Sort Complete!</strong>`, 'complete');
+    }
 
-      function generateHeapSortSteps(arr) {
+    function generateMergeSortSteps(arr) {
         let sorted = new Set();
-        let n = arr.length;
+        let yLevels = new Array(arr.length).fill(15); // Base Y is 15% (bottom linear array)
+
+        function makeState(msg, action, active = [], k_idx = -1) {
+            let mainCopy = arr.map((item, i) => item ? {id: item.id, val: item.val, yLevel: yLevels[i]} : null);
+            let mrks = k_idx !== -1 ? [{label: 'k', idx: k_idx, color: '#f43f5e'}] : [];
+            record(mainCopy, active, sorted, [], mrks, msg, action, 'merge'); // 'merge' layout handles yLevels
+        }
+
+        function merge(l, m, r, depth) {
+            // Drop down elements to show splitting
+            let dropY = 15 + (depth * 25);
+            for(let i=l; i<=r; i++) yLevels[i] = dropY;
+            makeState(`Divided subarray [${l}...${r}]`, 'idle');
+
+            let n1 = m - l + 1, n2 = r - m;
+            let L = new Array(n1), R = new Array(n2);
+            for (let i = 0; i < n1; i++) L[i] = arr[l + i].val;
+            for (let j = 0; j < n2; j++) R[j] = arr[m + 1 + j].val;
+
+            let i = 0, j = 0, k = l;
+            let targetY = 15 + ((depth-1) * 25); // Pop back up one level when merged
+
+            while (i < n1 && j < n2) {
+                if (L[i] <= R[j]) { arr[k].val = L[i]; i++; } 
+                else { arr[k].val = R[j]; j++; }
+                yLevels[k] = targetY; 
+                makeState(`Merging: overwriting index ${k} with smaller value ${arr[k].val}.`, 'overwrite', [k], k);
+                k++;
+            }
+            while (i < n1) {
+                arr[k].val = L[i]; yLevels[k] = targetY;
+                makeState(`Merging remaining left side: ${arr[k].val}.`, 'overwrite', [k], k); i++; k++;
+            }
+            while (j < n2) {
+                arr[k].val = R[j]; yLevels[k] = targetY;
+                makeState(`Merging remaining right side: ${arr[k].val}.`, 'overwrite', [k], k); j++; k++;
+            }
+        }
+        function mergeSortRec(l, r, depth) {
+            if (l >= r) return;
+            let m = l + parseInt((r - l) / 2);
+            mergeSortRec(l, m, depth + 1); mergeSortRec(m + 1, r, depth + 1);
+            merge(l, m, r, depth);
+        }
+        mergeSortRec(0, arr.length - 1, 1);
+        for(let i=0; i<arr.length; i++) { yLevels[i] = 15; sorted.add(i); } // All back to bottom
+        makeState(`<strong>Merge Sort Complete!</strong>`, 'complete');
+    }
+
+    function generateHeapSortSteps(arr) {
+        let sorted = new Set(); let n = arr.length;
+        const typeSelect = document.getElementById('heap-type-select');
+        const isMax = typeSelect ? typeSelect.value === 'max' : true;
+        
+        let treeEdges = []; // Compute edges for tree drawing
+        for(let i=0; i<n; i++) {
+            if(2*i+1 < n) treeEdges.push([i, 2*i+1]);
+            if(2*i+2 < n) treeEdges.push([i, 2*i+2]);
+        }
+
+        function makeState(msg, action, active=[], mrks=[]) {
+            // Nodes physically morph into a tree during heap operations
+            record(arr, active, sorted, [], mrks, msg, action, { type: 'tree', edges: treeEdges });
+        }
 
         function heapify(n, i) {
-          let largest = i;
-          let l = 2 * i + 1;
-          let r = 2 * i + 2;
+            let target = i, l = 2 * i + 1, r = 2 * i + 2;
+            let m = [{label: 'curr', idx: i, color: '#06b6d4'}];
+            if(l < n) m.push({label: 'L', idx: l, color: '#fbbf24'});
+            if(r < n) m.push({label: 'R', idx: r, color: '#fbbf24'});
+            
+            makeState(`Heapifying node ${i}. Checking children...`, 'compare', [i, l, r].filter(x=>x<n), m);
 
-          let m = [{ label: "curr", idx: i, color: "#c084fc" }];
-          if (l < n) m.push({ label: "L", idx: l, color: "#fbbf24" });
-          if (r < n) m.push({ label: "R", idx: r, color: "#fbbf24" });
+            if (isMax) {
+                if (l < n && arr[l].val > arr[target].val) target = l;
+                if (r < n && arr[r].val > arr[target].val) target = r;
+            } else {
+                if (l < n && arr[l].val < arr[target].val) target = l;
+                if (r < n && arr[r].val < arr[target].val) target = r;
+            }
 
-          record(
-            arr,
-            [i, l, r].filter((x) => x < n),
-            sorted,
-            [largest],
-            m,
-            `Heapifying at node ${i}. Checking children.`,
-            "compare",
-          );
-
-          if (l < n && arr[l].val > arr[largest].val) largest = l;
-          if (r < n && arr[r].val > arr[largest].val) largest = r;
-
-          if (largest !== i) {
-            m = [
-              { label: "root", idx: i, color: "#f87171" },
-              { label: "lgst", idx: largest, color: "#22c55e" },
-            ];
-            record(
-              arr,
-              [i, largest],
-              sorted,
-              [],
-              m,
-              `Swapping with largest child.`,
-              "idle",
-            );
-            swap(arr, i, largest);
-            record(arr, [i, largest], sorted, [], m, `Swapped.`, "swap");
-            heapify(n, largest);
-          }
+            if (target !== i) {
+                m = [{label: 'node', idx: i, color: '#f43f5e'}, {label: 'swap', idx: target, color: '#10b981'}];
+                makeState(`Swapping node with child.`, 'idle', [i, target], m);
+                swap(arr, i, target);
+                makeState(`Swapped.`, 'swap', [i, target], m);
+                heapify(n, target);
+            }
         }
 
-        // Build max heap
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `Phase 1: Building Max Heap from bottom up.`,
-          "idle",
-        );
-        for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-          heapify(n, i);
-        }
+        makeState(`Morphing array into a Binary Tree representation.`, 'idle');
+        makeState(`Phase 1: Building ${isMax ? 'Max' : 'Min'} Heap.`, 'idle');
+        
+        for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(n, i);
 
-        // Extract elements
         for (let i = n - 1; i > 0; i--) {
-          let m = [
-            { label: "Root(Max)", idx: 0, color: "#f87171" },
-            { label: "End", idx: i, color: "#c084fc" },
-          ];
-          record(
-            arr,
-            [0, i],
-            sorted,
-            [0],
-            m,
-            `Max element is at root. Swapping with end of heap (index ${i}).`,
-            "idle",
-          );
-          swap(arr, 0, i);
-          record(arr, [0, i], sorted, [], m, `Swapped root to end.`, "swap");
-
-          sorted.add(i); // Now sorted
-          record(
-            arr,
-            [],
-            sorted,
-            [],
-            [],
-            `Element placed. Reducing heap size and fixing root.`,
-            "idle",
-          );
-          heapify(i, 0);
+            let m = [{label: 'Root', idx: 0, color: '#f43f5e'}, {label: 'End', idx: i, color: '#06b6d4'}];
+            makeState(`Swapping root with end of heap (index ${i}).`, 'idle', [0, i], m);
+            swap(arr, 0, i);
+            makeState(`Swapped root to end. Element is now sorted.`, 'swap', [0, i], m);
+            
+            // Remove edge to the sorted element visually
+            treeEdges = treeEdges.filter(edge => edge[1] !== i);
+            
+            sorted.add(i);
+            makeState(`Reducing heap size and fixing root.`, 'idle');
+            heapify(i, 0);
         }
         sorted.add(0);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Heap Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        
+        // Final state: Return to linear layout
+        record(arr, [], sorted, [], [], `<strong>Heap Sort Complete!</strong> returning to array view.`, 'complete', {type: 'linear'});
+    }
 
-      // For these, elements don't just swap. They overwrite array positions.
-      // We modify arr[idx].val directly.
-      function generateMergeSortSteps(arr) {
+    function generateBucketSortSteps(originalArr) {
+        let arr = [...originalArr]; 
         let sorted = new Set();
+        let buckets = Array.from({length: 10}, () => []);
 
-        function merge(l, m, r) {
-          let n1 = m - l + 1;
-          let n2 = r - m;
-          let L = new Array(n1),
-            R = new Array(n2);
+        function makeState(msg, action) {
+            let mainCopy = arr.map(item => item ? {id: item.id, val: item.val} : null);
+            let bucketsCopy = buckets.map(b => b.map(item => ({id: item.id, val: item.val})));
+            record(mainCopy, [], sorted, [], [], msg, action, { type: 'buckets', mode: 'horizontal', buckets: bucketsCopy });
+        }
 
-          for (let i = 0; i < n1; i++) L[i] = arr[l + i].val;
-          for (let j = 0; j < n2; j++) R[j] = arr[m + 1 + j].val;
+        makeState(`Initializing 10 buckets based on tens digit.`, 'idle');
+        for(let i=0; i<arr.length; i++) {
+            let item = arr[i]; let bIdx = Math.min(Math.floor(item.val / 10), 9);
+            buckets[bIdx].push(item); arr[i] = null; 
+            makeState(`Moving ${item.val} to Bucket ${bIdx}.`, 'distribute');
+        }
 
-          let i = 0,
-            j = 0,
-            k = l;
-
-          let mrks = [
-            { label: "L", idx: l, color: "#c084fc" },
-            { label: "R", idx: r, color: "#c084fc" },
-            { label: "k", idx: k, color: "#f87171" },
-          ];
-          record(
-            arr,
-            [],
-            sorted,
-            [],
-            mrks,
-            `Merging subarrays [${l}...${m}] and [${m + 1}...${r}].`,
-            "idle",
-          );
-
-          while (i < n1 && j < n2) {
-            if (L[i] <= R[j]) {
-              arr[k].val = L[i];
-              i++;
-            } else {
-              arr[k].val = R[j];
-              j++;
+        for(let b=0; b<10; b++) {
+            if(buckets[b].length > 1) {
+                makeState(`Sorting elements inside Bucket ${b}...`, 'idle');
+                for(let i=1; i<buckets[b].length; i++) {
+                    let j = i;
+                    while(j > 0 && buckets[b][j-1].val > buckets[b][j].val) {
+                        let temp = buckets[b][j]; buckets[b][j] = buckets[b][j-1]; buckets[b][j-1] = temp;
+                        makeState(`Swapping inside Bucket ${b}.`, 'swap'); j--;
+                    }
+                }
             }
-            mrks = [{ label: "k", idx: k, color: "#f87171" }];
-            record(
-              arr,
-              [k],
-              sorted,
-              [],
-              mrks,
-              `Overwriting index ${k} with smaller value: <span class="font-mono">${arr[k].val}</span>.`,
-              "overwrite",
-            );
-            k++;
-          }
-
-          while (i < n1) {
-            arr[k].val = L[i];
-            mrks = [{ label: "k", idx: k, color: "#f87171" }];
-            record(
-              arr,
-              [k],
-              sorted,
-              [],
-              mrks,
-              `Copying remaining left half value ${arr[k].val} to index ${k}.`,
-              "overwrite",
-            );
-            i++;
-            k++;
-          }
-          while (j < n2) {
-            arr[k].val = R[j];
-            mrks = [{ label: "k", idx: k, color: "#f87171" }];
-            record(
-              arr,
-              [k],
-              sorted,
-              [],
-              mrks,
-              `Copying remaining right half value ${arr[k].val} to index ${k}.`,
-              "overwrite",
-            );
-            j++;
-            k++;
-          }
         }
-
-        function mergeSortRec(l, r) {
-          if (l >= r) return;
-          let m = l + parseInt((r - l) / 2);
-          mergeSortRec(l, m);
-          mergeSortRec(m + 1, r);
-          merge(l, m, r);
-        }
-
-        mergeSortRec(0, arr.length - 1);
-        for (let i = 0; i < arr.length; i++) sorted.add(i);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Merge Sort Complete!</strong>`,
-          "complete",
-        );
-      }
-
-      function generateBucketSortSteps(arr) {
-        let sorted = new Set();
-        let n = arr.length;
-
-        let buckets = Array.from({ length: 10 }, () => []);
-
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `Distributing elements into 10 buckets based on tens digit (e.g., 45 -> Bucket 4).`,
-          "idle",
-        );
-
-        for (let i = 0; i < n; i++) {
-          let val = arr[i].val;
-          let bucketIdx = Math.min(Math.floor(val / 10), 9);
-          buckets[bucketIdx].push(val);
-          let m = [{ label: "curr", idx: i, color: "#c084fc" }];
-          record(
-            arr,
-            [i],
-            sorted,
-            [],
-            m,
-            `Element ${val} placed in conceptual Bucket ${bucketIdx}.`,
-            "idle",
-          );
-        }
-
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `Sorting individual buckets in background...`,
-          "idle",
-        );
-        for (let i = 0; i < 10; i++) buckets[i].sort((a, b) => a - b);
 
         let k = 0;
-        for (let i = 0; i < 10; i++) {
-          if (buckets[i].length > 0) {
-            record(
-              arr,
-              [],
-              sorted,
-              [],
-              [],
-              `Gathering elements from Bucket ${i}...`,
-              "idle",
-            );
-            for (let j = 0; j < buckets[i].length; j++) {
-              arr[k].val = buckets[i][j];
-              let m = [{ label: "Write", idx: k, color: "#22c55e" }];
-              record(
-                arr,
-                [k],
-                sorted,
-                [],
-                m,
-                `Overwriting index ${k} with ${arr[k].val} from Bucket ${i}.`,
-                "overwrite",
-              );
-              sorted.add(k);
-              k++;
+        for(let b=0; b<10; b++) {
+            while(buckets[b].length > 0) {
+                let item = buckets[b].shift(); arr[k] = item; sorted.add(k);
+                makeState(`Gathering ${item.val} from Bucket ${b} back to array.`, 'gather'); k++;
             }
-          }
         }
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Bucket Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+        record(arr, [], sorted, [], [], `<strong>Bucket Sort Complete!</strong>`, 'complete');
+    }
 
-      function generateRadixSortSteps(arr) {
-        let sorted = new Set();
-        let n = arr.length;
-        let maxVal = Math.max(...arr.map((x) => x.val));
+    function generateRadixSortSteps(originalArr) {
+        let arr = [...originalArr]; let sorted = new Set();
+        let maxVal = Math.max(...arr.map(x => (x ? x.val : 0)));
+        let buckets = Array.from({length: 10}, () => []);
 
-        function countingSort(exp) {
-          let output = new Array(n);
-          let count = new Array(10).fill(0);
-
-          record(
-            arr,
-            [],
-            sorted,
-            [],
-            [],
-            `Counting Sort for digit place: <span class="font-bold text-blue-400">10^${Math.log10(exp)}</span>...`,
-            "idle",
-          );
-
-          for (let i = 0; i < n; i++) {
-            let digit = Math.floor(arr[i].val / exp) % 10;
-            count[digit]++;
-          }
-          for (let i = 1; i < 10; i++) {
-            count[i] += count[i - 1];
-          }
-
-          for (let i = n - 1; i >= 0; i--) {
-            let digit = Math.floor(arr[i].val / exp) % 10;
-            output[count[digit] - 1] = arr[i].val;
-            count[digit]--;
-          }
-
-          for (let i = 0; i < n; i++) {
-            arr[i].val = output[i];
-            let m = [{ label: "Write", idx: i, color: "#f87171" }];
-            record(
-              arr,
-              [i],
-              sorted,
-              [],
-              m,
-              `Writing ${arr[i].val} back to array for this digit pass.`,
-              "overwrite",
-            );
-          }
+        function makeState(msg, action) {
+            let mainCopy = arr.map(item => item ? {id: item.id, val: item.val} : null);
+            let bucketsCopy = buckets.map(b => b.map(item => ({id: item.id, val: item.val})));
+            record(mainCopy, [], sorted, [], [], msg, action, { type: 'buckets', mode: 'vertical', buckets: bucketsCopy });
         }
 
         for (let exp = 1; Math.floor(maxVal / exp) > 0; exp *= 10) {
-          countingSort(exp);
+            makeState(`Distributing based on the 10^${Math.log10(exp)} digit. Stacking vertically.`, 'idle');
+            for (let i = 0; i < arr.length; i++) {
+                let item = arr[i]; let digit = Math.floor(item.val / exp) % 10;
+                buckets[digit].push(item); arr[i] = null;
+                makeState(`Moving ${item.val} to Bucket ${digit} (digit = ${digit}).`, 'distribute');
+            }
+            makeState(`Gathering elements back sequentially from buckets 0 to 9.`, 'idle');
+            let k = 0;
+            for (let b = 0; b < 10; b++) {
+                while(buckets[b].length > 0) {
+                    let item = buckets[b].shift(); arr[k] = item;
+                    makeState(`Popping ${item.val} from Bucket ${b} back to array.`, 'gather'); k++;
+                }
+            }
         }
+        for(let i=0; i<arr.length; i++) sorted.add(i);
+        record(arr, [], sorted, [], [], `<strong>Radix Sort Complete!</strong>`, 'complete');
+    }
 
-        for (let i = 0; i < n; i++) sorted.add(i);
-        record(
-          arr,
-          [],
-          sorted,
-          [],
-          [],
-          `<strong>Radix Sort Complete!</strong>`,
-          "complete",
-        );
-      }
+    function generateLinearSearchSteps(arr) {
+        let visited = [];
+        let found = -1;
+        recordSearch(arr, visited, [], -1, [], `Starting Linear Search for target <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle');
+        
+        for (let i = 0; i < arr.length; i++) {
+            visited.push(i);
+            let m = [{label: 'i', idx: i, color: '#06b6d4'}];
+            recordSearch(arr, visited, [i], -1, m, `Checking index ${i}. Is ${arr[i].val} == ${searchTargetValue}?`, 'compare');
+            
+            if (arr[i].val === searchTargetValue) {
+                found = i;
+                m = [{label: 'Found!', idx: i, color: '#a855f7'}];
+                recordSearch(arr, visited, [], i, m, `<strong>Target found at index ${i}!</strong>`, 'complete');
+                break;
+            }
+        }
+        if (found === -1) {
+            recordSearch(arr, visited, [], -1, [], `<strong>Target not found in array.</strong>`, 'complete');
+        }
+    }
 
-      function getLeftPos(index, totalItems) {
+    function generateBinarySearchSteps(arr) {
+        let visited = [];
+        let l = 0, r = arr.length - 1;
+        let found = -1;
+        
+        recordSearch(arr, visited, [], -1, [], `Array must be sorted for Binary Search. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle');
+
+        while (l <= r) {
+            let mid = Math.floor((l + r) / 2);
+            let m = [{label: 'L', idx: l, color: '#06b6d4'}, {label: 'R', idx: r, color: '#fbbf24'}, {label: 'Mid', idx: mid, color: '#f43f5e'}];
+            
+            for(let i=l; i<=r; i++) if(!visited.includes(i)) visited.push(i);
+            
+            recordSearch(arr, visited, [mid], -1, m, `Checking middle index ${mid}. Is ${arr[mid].val} == ${searchTargetValue}?`, 'compare');
+            
+            if (arr[mid].val === searchTargetValue) {
+                found = mid;
+                m = [{label: 'Found!', idx: mid, color: '#a855f7'}];
+                recordSearch(arr, visited, [], mid, m, `<strong>Target found at index ${mid}!</strong>`, 'complete');
+                break;
+            } else if (arr[mid].val < searchTargetValue) {
+                recordSearch(arr, visited, [], -1, m, `${arr[mid].val} < ${searchTargetValue}. Target must be in right half.`, 'idle');
+                l = mid + 1;
+            } else {
+                recordSearch(arr, visited, [], -1, m, `${arr[mid].val} > ${searchTargetValue}. Target must be in left half.`, 'idle');
+                r = mid - 1;
+            }
+        }
+        
+        if (found === -1) recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong>`, 'complete');
+    }
+
+    function generateDFSSteps(arr) {
+        let visited = []; let found = -1; let n = arr.length;
+        let treeEdges = [];
+        for(let i=0; i<n; i++) {
+            if(2*i+1 < n) treeEdges.push([i, 2*i+1]);
+            if(2*i+2 < n) treeEdges.push([i, 2*i+2]);
+        }
+        
+        let displayStack = [];
+
+        recordSearch(arr, visited, [], -1, [], `Morphing into Tree for DFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: []});
+
+        function dfs(idx, parentIdx = -1) {
+            if (idx >= n || found !== -1) return;
+            
+            displayStack.push(idx);
+            let m = [{label: 'DFS', idx: idx, color: '#06b6d4'}];
+            
+            recordSearch(arr, visited, [idx], -1, m, `Traversing to node ${idx} (Value: ${arr[idx].val}). Pushed to Stack.`, 'compare', {type: 'tree', edges: treeEdges, travel: parentIdx !== -1 ? [parentIdx, idx] : null}, {type: 'Stack', elements: [...displayStack]});
+            
+            visited.push(idx);
+            
+            if (arr[idx].val === searchTargetValue) {
+                found = idx;
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong>`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: [...displayStack]});
+                return;
+            }
+            
+            // Traverse children
+            if (2*idx + 1 < n) dfs(2*idx + 1, idx);
+            if (2*idx + 2 < n && found === -1) dfs(2*idx + 2, idx);
+            
+            if (found === -1) {
+                let popped = displayStack.pop();
+                recordSearch(arr, visited, [], -1, m, `Node ${idx} fully explored. Popping from Stack and backtracking.`, 'idle', {type: 'tree', edges: treeEdges, travel: parentIdx !== -1 ? [idx, parentIdx] : null}, {type: 'Stack', elements: [...displayStack]});
+            }
+        }
+        
+        dfs(0);
+        if (found === -1) recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Stack is empty.`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: []});
+    }
+
+    function generateBFSSteps(arr) {
+        let visited = []; let found = -1; let n = arr.length;
+        let treeEdges = [];
+        for(let i=0; i<n; i++) {
+            if(2*i+1 < n) treeEdges.push([i, 2*i+1]);
+            if(2*i+2 < n) treeEdges.push([i, 2*i+2]);
+        }
+        
+        let q = [{idx: 0, parent: -1}];
+        let displayQueue = [0];
+
+        recordSearch(arr, visited, [], -1, [], `Morphing into Tree for BFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+
+        while (q.length > 0 && found === -1) {
+            let curr = q.shift();
+            let idx = curr.idx;
+            displayQueue.shift();
+            
+            visited.push(idx);
+            let m = [{label: 'BFS', idx: idx, color: '#fbbf24'}];
+            
+            recordSearch(arr, visited, [idx], -1, m, `Dequeued node ${idx} (Value: ${arr[idx].val}).`, 'compare', {type: 'tree', edges: treeEdges, travel: curr.parent !== -1 ? [curr.parent, idx] : null}, {type: 'Queue', elements: [...displayQueue]});
+            
+            if (arr[idx].val === searchTargetValue) {
+                found = idx;
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong>`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+                break;
+            }
+            
+            let pushed = false;
+            if (2*idx + 1 < n) { q.push({idx: 2*idx + 1, parent: idx}); displayQueue.push(2*idx + 1); pushed = true; }
+            if (2*idx + 2 < n) { q.push({idx: 2*idx + 2, parent: idx}); displayQueue.push(2*idx + 2); pushed = true; }
+            
+            if (pushed && found === -1) {
+                recordSearch(arr, visited, [idx], -1, m, `Enqueued children of node ${idx}.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+            }
+        }
+        if (found === -1) recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Queue is empty.`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: []});
+    }
+
+    function getLeftPos(index, totalItems) {
         return `calc((${index} * ((100% - ${(totalItems - 1) * GAP_PX}px) / ${totalItems})) + (${index} * ${GAP_PX}px))`;
-      }
-
-      function getWidth(totalItems) {
+    }
+    
+    function getWidth(totalItems) {
         return `calc((100% - ${(totalItems - 1) * GAP_PX}px) / ${totalItems})`;
-      }
+    }
 
-      function renderInitialDOM(arr) {
-        arrayContainer.innerHTML = "";
-        indicesContainer.innerHTML = "";
-        markersContainer.innerHTML = "";
+    function getTreeCoordinates(idx, total) {
+        // Returns percentage X and Y for a node in a binary tree
+        const level = Math.floor(Math.log2(idx + 1));
+        const maxLevel = Math.floor(Math.log2(total));
+        const levelY = 90 - (level * (70 / (maxLevel || 1))); // From top to bottom (90% to 20% in CSS bottom terms)
+        
+        const nodesInLevel = Math.pow(2, level);
+        const posInLevel = idx - (nodesInLevel - 1);
+        const sectionWidth = 100 / nodesInLevel;
+        const x = (posInLevel * sectionWidth) + (sectionWidth / 2);
+        
+        return { x: x, y: levelY };
+    }
 
-        const maxVal = Math.max(...arr.map((a) => a.val), 1);
+
+    function renderInitialDOM(arr) {
+        arrayContainer.innerHTML = '';
+        indicesContainer.innerHTML = '';
+        markersContainer.innerHTML = '';
+        treeSvgLayer.innerHTML = '';
+        bucketsBgContainer.classList.add('opacity-0');
+        document.getElementById('ds-container').classList.add('hidden');
+        
+        const maxVal = Math.max(...arr.map(a => a.val), 1);
         const itemWidth = getWidth(arr.length);
-
+        
         arr.forEach((item, idx) => {
-          // Static index labels
-          const indexLabel = document.createElement("div");
-          indexLabel.className =
-            "absolute text-center flex justify-center w-full";
-          indexLabel.style.width = itemWidth;
-          indexLabel.style.left = getLeftPos(idx, arr.length);
-          indexLabel.innerText = idx;
-          indicesContainer.appendChild(indexLabel);
+            // Index Labels
+            const indexLabel = document.createElement('div');
+            indexLabel.id = `idx-lbl-${idx}`;
+            indexLabel.className = 'absolute text-center flex justify-center w-full transition-all duration-500';
+            indexLabel.style.width = itemWidth;
+            indexLabel.style.left = getLeftPos(idx, arr.length);
+            indexLabel.innerText = idx;
+            indicesContainer.appendChild(indexLabel);
 
-          // Physical block elements mapped by unique ID
-          const bar = document.createElement("div");
-          bar.id = item.id;
-          const heightPct = Math.max((item.val / maxVal) * 100, 15); // min 15% height
-
-          bar.className =
-            "array-bar bar-default rounded-t-md flex items-end justify-center pb-2 font-mono font-bold text-sm sm:text-base text-white absolute bottom-0 transition-position";
-          bar.style.width = itemWidth;
-          bar.style.height = `${heightPct}%`;
-          bar.style.left = getLeftPos(idx, arr.length);
-          bar.innerText = item.val;
-
-          arrayContainer.appendChild(bar);
+            // Array Blocks
+            const bar = document.createElement('div');
+            bar.id = item.id;
+            const heightPct = Math.max((item.val / maxVal) * 75, 10); // Standardize initial max height to 75%
+            
+            bar.className = 'node-element layout-linear color-default';
+            bar.style.width = itemWidth;
+            bar.style.height = `${heightPct}%`;
+            bar.style.left = getLeftPos(idx, arr.length);
+            bar.style.bottom = '15%'; // Base linear bottom
+            bar.innerText = item.val;
+            
+            arrayContainer.appendChild(bar);
         });
-      }
+    }
 
-      function renderStep(stepIndex) {
+    function renderStep(stepIndex) {
         if (stepIndex < 0 || stepIndex >= steps.length) return;
-
         const step = steps[stepIndex];
-        const arrState = step.array;
-        const maxVal = Math.max(...arrState.map((a) => a.val), 1); // Used for overwrite height recalcs
-
+        const layout = step.layout;
+        
         stepCounter.textContent = `Step ${stepIndex + 1} / ${steps.length}`;
         explanationText.innerHTML = `<p>${step.message}</p>`;
-
-        // Update Variables Monitor UI dynamically
-        varsMonitor.innerHTML = "";
-        step.markers.forEach((m) => {
-          let el = document.createElement("div");
-          el.className = "bg-slate-800 p-2 rounded border border-slate-700";
-          el.innerHTML = `
-                <div class="text-xs font-bold mb-1" style="color: ${m.color}">${m.label}</div>
-                <div class="text-xl font-mono text-white">${m.idx !== -1 ? m.idx : "-"}</div>
+        
+        // Update Variables Monitor
+        varsMonitor.innerHTML = '';
+        step.markers.forEach(m => {
+            let el = document.createElement('div');
+            el.className = 'bg-zinc-900 p-2 rounded border border-zinc-700/50 shadow-inner';
+            el.innerHTML = `
+                <div class="text-[10px] font-bold mb-1 uppercase tracking-widest" style="color: ${m.color}">${m.label}</div>
+                <div class="text-xl font-mono text-white">${m.idx !== -1 ? m.idx : '-'}</div>
             `;
-          varsMonitor.appendChild(el);
+            varsMonitor.appendChild(el);
         });
-        if (step.markers.length === 0) {
-          varsMonitor.innerHTML = `<div class="col-span-full text-slate-500 text-sm">No active pointers</div>`;
+        if(step.markers.length === 0) varsMonitor.innerHTML = `<div class="col-span-full text-zinc-500 text-xs">No active pointers</div>`;
+
+        // Handle Background Visibilities
+        if (layout.type === 'buckets') {
+            bucketsBgContainer.classList.remove('opacity-0');
+            indicesContainer.style.top = '10%'; // Shift indices down slightly
+        } else {
+            bucketsBgContainer.classList.add('opacity-0');
+            indicesContainer.style.top = '0';
         }
 
-        // Apply visual updates to Blocks
-        arrState.forEach((item, arrIdx) => {
-          const bar = document.getElementById(item.id);
-          if (!bar) return;
-
-          // Update Left Position (Handles Swaps)
-          bar.style.left = getLeftPos(arrIdx, arrState.length);
-
-          // Update Height/Text (Handles Overwrites for Merge/Bucket/Radix)
-          if (step.action === "overwrite") {
-            const heightPct = Math.max((item.val / maxVal) * 100, 15);
-            bar.style.height = `${heightPct}%`;
-            bar.innerText = item.val;
-          }
-
-          // Determine classes
-          let baseClasses =
-            "array-bar rounded-t-md flex items-end justify-center pb-2 font-mono font-bold text-sm sm:text-base text-white absolute bottom-0 transition-position ";
-
-          if (step.sortedIndices.has(arrIdx)) {
-            bar.className = baseClasses + "bar-sorted";
-          } else if (step.specialIndices.includes(arrIdx)) {
-            bar.className = baseClasses + "bar-special";
-          } else if (step.activeIndices.includes(arrIdx)) {
-            if (step.action === "swap" || step.action === "overwrite") {
-              bar.className = baseClasses + "bar-swapping";
-            } else {
-              bar.className = baseClasses + "bar-comparing";
+        // Draw Tree Edges in SVG and Travel Arrows
+        treeSvgLayer.innerHTML = `
+            <defs>
+                <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+                    <polygon points="0 0, 6 3, 0 6" fill="#06b6d4" />
+                </marker>
+                <marker id="arrowhead-back" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+                    <polygon points="6 0, 0 3, 6 6" fill="#f43f5e" />
+                </marker>
+            </defs>
+        `;
+        
+        if (layout.type === 'tree' && layout.edges) {
+            // Draw static edges
+            layout.edges.forEach(([u, v]) => {
+                const p1 = getTreeCoordinates(u, originalArray.length);
+                const p2 = getTreeCoordinates(v, originalArray.length);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${100 - p1.y}%`);
+                line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${100 - p2.y}%`);
+                line.setAttribute('stroke', '#3f3f46'); // zinc-700
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('class', 'tree-line');
+                treeSvgLayer.appendChild(line);
+            });
+            
+            // Draw dynamic travel edge (for Search algos)
+            if (layout.travel) {
+                const [u, v] = layout.travel;
+                const p1 = getTreeCoordinates(u, originalArray.length);
+                const p2 = getTreeCoordinates(v, originalArray.length);
+                const isBacktrack = p1.y < p2.y; // If traveling up the tree, it's a backtrack
+                
+                const travelLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                travelLine.setAttribute('x1', `${p1.x}%`); travelLine.setAttribute('y1', `${100 - p1.y}%`);
+                travelLine.setAttribute('x2', `${p2.x}%`); travelLine.setAttribute('y2', `${100 - p2.y}%`);
+                travelLine.setAttribute('stroke', isBacktrack ? '#f43f5e' : '#06b6d4'); // Rose for Backtrack, Cyan for Forward
+                travelLine.setAttribute('stroke-width', '4');
+                travelLine.setAttribute('class', 'tree-line');
+                travelLine.setAttribute('marker-end', isBacktrack ? 'url(#arrowhead-back)' : 'url(#arrowhead)');
+                treeSvgLayer.appendChild(travelLine);
             }
-          } else if (
-            step.action !== "complete" &&
-            step.activeIndices.length > 0
-          ) {
-            bar.className = baseClasses + "bar-default bar-inactive";
-          } else {
-            bar.className = baseClasses + "bar-default";
-          }
+        }
+        
+        // Fade out index labels during tree layout
+        if (layout.type === 'tree') indicesContainer.style.opacity = '0';
+        else indicesContainer.style.opacity = '1';
+
+        const maxVal = Math.max(...originalArray.map(a => a.val), 1);
+        const standardWidth = getWidth(originalArray.length);
+        const animDur = Math.min(speedMs, 1000) + 'ms';
+
+        // Universal update for every block
+        originalArray.forEach((origItem) => {
+            const bar = document.getElementById(origItem.id);
+            if (!bar) return;
+            bar.style.transitionDuration = animDur;
+            bar.style.fontSize = ''; // Reset custom font size adjustments
+
+            // 1. Determine location in data structures
+            let inMainIdx = step.array.findIndex(x => x && x.id === origItem.id);
+            let bucketIdx = -1, itemIdxInBucket = -1;
+            
+            if (inMainIdx === -1 && layout.type === 'buckets') {
+                for (let b = 0; b < 10; b++) {
+                    let found = layout.buckets[b].findIndex(x => x.id === origItem.id);
+                    if (found !== -1) { bucketIdx = b; itemIdxInBucket = found; break; }
+                }
+            }
+
+            // 2. State & Styling Flags
+            let isActive = inMainIdx !== -1 && step.activeIndices.includes(inMainIdx);
+            let isSorted = inMainIdx !== -1 && step.sortedIndices.has(inMainIdx);
+            let isSpecial = inMainIdx !== -1 && step.specialIndices.includes(inMainIdx);
+            let isVisited = inMainIdx !== -1 && step.visitedIndices && step.visitedIndices.has(inMainIdx);
+            
+            // Clean slate classes
+            let newClasses = 'node-element ';
+            
+            // Color logic
+            if (isSpecial) {
+                newClasses += 'color-special ';
+                newClasses += (currentCategory === 'sort') ? 'anim-pivot ' : 'anim-target ';
+            }
+            else if (isSorted) newClasses += 'color-sorted ';
+            else if (isActive) {
+                if (step.action === 'swap' || step.action === 'overwrite') newClasses += 'color-swapping anim-pop ';
+                else newClasses += 'color-comparing ' + (currentAlgoId === 'bubble' ? 'anim-bubble' : '');
+            } 
+            else if (isVisited) newClasses += 'color-visited ';
+            else if (step.action !== 'complete' && step.activeIndices.length > 0 && bucketIdx === -1) {
+                newClasses += 'color-default color-inactive ';
+            } else {
+                newClasses += 'color-default ';
+            }
+
+            // 3. Compute Physical Geography based on Layout Mode
+            if (inMainIdx !== -1) {
+                // In Main Array. Check Layout Type.
+                if (layout.type === 'tree') {
+                    // Tree Node morphing
+                    newClasses += 'layout-tree ';
+                    const coords = getTreeCoordinates(inMainIdx, originalArray.length);
+                    bar.style.left = `${coords.x}%`;
+                    bar.style.bottom = `${coords.y}%`;
+                    bar.innerText = step.array[inMainIdx].val;
+                } else if (layout.type === 'merge') {
+                    // Merge Sort (Bars with Y offsets)
+                    newClasses += 'layout-linear ';
+                    bar.style.left = getLeftPos(inMainIdx, originalArray.length);
+                    bar.style.bottom = `${step.array[inMainIdx].yLevel}%`;
+                    bar.style.width = standardWidth;
+                    bar.innerText = step.array[inMainIdx].val;
+                    bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 75, 10)}%`;
+                } else {
+                    // Standard Linear Layout
+                    newClasses += 'layout-linear ';
+                    bar.style.left = getLeftPos(inMainIdx, originalArray.length);
+                    
+                    if (layout.type === 'buckets') {
+                        // Shrink height of main array so it doesn't overlap buckets
+                        bar.style.bottom = '45%'; 
+                        bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 45, 10)}%`;
+                    } else {
+                        bar.style.bottom = '15%';
+                        bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 75, 10)}%`;
+                    }
+                    bar.style.width = standardWidth;
+                    bar.innerText = step.array[inMainIdx].val;
+                }
+                bar.style.zIndex = isActive ? '30' : '20';
+            } 
+            else if (bucketIdx !== -1) {
+                // Inside a Bucket
+                newClasses += 'layout-bucket ';
+                const bCount = layout.buckets[bucketIdx].length;
+                if (layout.mode === 'horizontal') {
+                    const spacing = bCount > 1 ? (7 / (bCount - 1)) : 0;
+                    bar.style.left = `calc(${bucketIdx * 10}% + 1.5% + ${itemIdxInBucket * spacing}%)`;
+                    bar.style.bottom = '5%';
+                    bar.style.width = '3%';
+                    // Highly scale down height to avoid overlapping main array
+                    bar.style.height = `${Math.max((origItem.val / maxVal) * 25, 5)}%`; 
+                } else {
+                    // Vertical stacking for Radix Sort
+                    bar.style.left = `calc(${bucketIdx * 10}% + 1.5%)`;
+                    bar.style.bottom = `calc(2% + ${itemIdxInBucket * 18}px)`;
+                    bar.style.width = '6%';
+                    bar.style.height = '16px'; // Squish blocks down
+                    bar.style.fontSize = '10px'; // Make font fit inside block
+                }
+                bar.style.zIndex = (20 + itemIdxInBucket).toString();
+            }
+
+            bar.className = newClasses;
         });
 
-        renderMarkers(step.markers);
-      }
+        // Pointers logic
+        const mainBaseLine = layout.type === 'buckets' ? '45%' : (layout.type === 'merge' ? '15%' : '15%');
+        if(layout.type !== 'tree') renderMarkers(step.markers, mainBaseLine);
+        else {
+            // Hide normal markers in tree mode to avoid mess
+            document.querySelectorAll('.pointer').forEach(el => el.style.opacity = '0');
+        }
+        
+        // Data Structure Monitor Logic (Stack / Queue)
+        const dsContainer = document.getElementById('ds-container');
+        if (step.dsState) {
+            dsContainer.classList.remove('hidden');
+            dsContainer.classList.add('flex');
+            document.getElementById('ds-title').textContent = step.dsState.type;
+            const dsElements = document.getElementById('ds-elements');
+            dsElements.innerHTML = '';
+            
+            let items = [...step.dsState.elements];
+            if (step.dsState.type === 'Stack') {
+                items.reverse(); // Flip so the 'top' of the stack visually sits at the top of the flexbox
+            }
+            
+            items.forEach(idx => {
+                const val = step.array[idx].val;
+                const el = document.createElement('div');
+                el.className = 'bg-zinc-800 border border-zinc-600 rounded px-2 py-1 text-xs font-mono text-white w-full text-center shadow';
+                el.innerHTML = `<span class="text-zinc-500 text-[9px] mr-1">[${idx}]</span>${val}`;
+                dsElements.appendChild(el);
+            });
+            
+            if (items.length === 0) {
+                 dsElements.innerHTML = '<span class="text-zinc-600 text-xs italic">Empty</span>';
+            }
+        } else {
+            dsContainer.classList.add('hidden');
+            dsContainer.classList.remove('flex');
+        }
+    }
 
-      function renderMarkers(markersData) {
-        // Clear old markers logically
-        const existingMarkers = document.querySelectorAll(".pointer");
-        existingMarkers.forEach((el) => (el.style.opacity = "0"));
+    function renderMarkers(markersData, mainBaseLine) {
+        const existing = document.querySelectorAll('.pointer');
+        existing.forEach(el => el.style.opacity = '0');
 
         const arrLength = originalArray.length;
         const itemWidth = getWidth(arrLength);
 
         markersData.forEach((m, i) => {
-          const id = `marker-dynamic-${m.label.replace(/\s+/g, "-")}`;
-          let el = document.getElementById(id);
-
-          if (!el) {
-            el = document.createElement("div");
-            el.id = id;
-            el.className = `pointer marker-transition absolute top-0`;
-            el.style.color = m.color;
-            el.innerHTML = `<div class="pointer-arrow" style="border-bottom-color: ${m.color}"></div><div>${m.label}</div>`;
-            markersContainer.appendChild(el);
-          }
-
-          if (m.idx >= 0 && m.idx < arrLength) {
-            el.style.opacity = "1";
-            // Calculate slightly staggered Y offsets if multiple markers share the same index
-            const offset =
-              markersData.filter((x, idx) => x.idx === m.idx && idx < i)
-                .length * 14;
-
+            if (m.idx < 0 || m.idx >= arrLength) return;
+            const id = `marker-dyn-${m.label.replace(/\s+/g, '-')}`;
+            let el = document.getElementById(id);
+            if (!el) {
+                el = document.createElement('div'); el.id = id;
+                el.className = `pointer absolute`;
+                el.style.color = m.color;
+                el.innerHTML = `<div class="pointer-arrow" style="border-bottom-color: ${m.color}"></div><div>${m.label}</div>`;
+                markersContainer.appendChild(el);
+            }
+            el.style.opacity = '1';
+            
+            // Adjust stacking if multiple pointers on same index
+            const offset = markersData.filter((x, idx) => x.idx === m.idx && idx < i).length * 16;
+            
             const itemLeft = getLeftPos(m.idx, arrLength);
             el.style.left = `calc(${itemLeft} + (${itemWidth} / 2))`;
-            el.style.transform = `translateX(-50%) translateY(${offset}px)`;
-          }
+            el.style.bottom = `calc(${mainBaseLine} - 3rem - ${offset}px)`;
+            el.style.transform = `translateX(-50%)`;
         });
-      }
+    }
 
-      function nextStep() {
+    function nextStep() {
         if (currentStepIndex < steps.length - 1) {
-          currentStepIndex++;
-          renderStep(currentStepIndex);
-          updateControlButtons();
-        } else {
-          pauseAnimation();
-        }
-      }
-
-      function prevStep() {
+            currentStepIndex++; renderStep(currentStepIndex); updateControlButtons();
+        } else pauseAnimation();
+    }
+    
+    function prevStep() {
         if (currentStepIndex > 0) {
-          currentStepIndex--;
-          renderStep(currentStepIndex);
-          updateControlButtons();
+            currentStepIndex--; renderStep(currentStepIndex); updateControlButtons();
         }
-      }
-
-      function togglePlay() {
-        if (isPlaying) {
-          pauseAnimation();
-        } else {
-          if (currentStepIndex >= steps.length - 1) {
-            currentStepIndex = -1;
-          }
-          playAnimation();
+    }
+    
+    function togglePlay() {
+        if (isPlaying) pauseAnimation();
+        else {
+            if (currentStepIndex >= steps.length - 1) currentStepIndex = -1;
+            playAnimation();
         }
-      }
-
-      function playAnimation() {
+    }
+    
+    function playAnimation() {
         isPlaying = true;
-        iconPlay.classList.add("hidden");
-        iconPause.classList.remove("hidden");
-        btnPlayPause.classList.replace("bg-blue-600", "bg-amber-600");
-        btnPlayPause.classList.replace(
-          "hover:bg-blue-500",
-          "hover:bg-amber-500",
-        );
+        document.getElementById('icon-play').classList.add('hidden');
+        document.getElementById('icon-pause').classList.remove('hidden');
+        
+        const btn = document.getElementById('btn-play-pause');
+        btn.classList.replace('bg-emerald-600', 'bg-amber-600');
+        btn.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
+        
+        document.getElementById('btn-step-next').disabled = true;
+        document.getElementById('btn-step-prev').disabled = true;
 
-        document.getElementById("btn-step-next").disabled = true;
-        document.getElementById("btn-step-prev").disabled = true;
-
-        nextStep();
+        nextStep(); 
         playInterval = setInterval(() => {
-          if (currentStepIndex >= steps.length - 1) {
-            pauseAnimation();
-          } else {
-            nextStep();
-          }
+            if (currentStepIndex >= steps.length - 1) pauseAnimation();
+            else nextStep();
         }, speedMs);
-      }
-
-      function pauseAnimation() {
-        isPlaying = false;
-        clearInterval(playInterval);
-
-        iconPause.classList.add("hidden");
-        iconPlay.classList.remove("hidden");
-        btnPlayPause.classList.replace("bg-amber-600", "bg-blue-600");
-        btnPlayPause.classList.replace(
-          "hover:bg-amber-500",
-          "hover:bg-blue-500",
-        );
-
+    }
+    
+    function pauseAnimation() {
+        isPlaying = false; clearInterval(playInterval);
+        document.getElementById('icon-pause').classList.add('hidden');
+        document.getElementById('icon-play').classList.remove('hidden');
+        
+        const btn = document.getElementById('btn-play-pause');
+        btn.classList.replace('bg-amber-600', 'bg-emerald-600');
+        btn.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
         updateControlButtons();
-      }
-
-      function updateControlButtons() {
+    }
+    
+    function updateControlButtons() {
         if (!isPlaying) {
-          document.getElementById("btn-step-prev").disabled =
-            currentStepIndex <= 0;
-          document.getElementById("btn-step-next").disabled =
-            currentStepIndex >= steps.length - 1;
+            document.getElementById('btn-step-prev').disabled = currentStepIndex <= 0;
+            document.getElementById('btn-step-next').disabled = currentStepIndex >= steps.length - 1;
         }
-      }
+    }
 
-      window.onload = init;
-    </script>
-  </body>
+    // Run Initialization
+    window.onload = init;
+</script>
+</body>
 </html>
