@@ -1255,6 +1255,8 @@
                 adjList[v].push(u); // Undirected for freely drawn graphs
                 treeEdges.push([u, v]);
             });
+            // Sort adjacency lists numerically for consistent textbook traversals
+            adjList.forEach(neighbors => neighbors.sort((a, b) => a - b));
         } else {
             for(let i=0; i<n; i++) {
                 if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
@@ -1315,6 +1317,8 @@
                 adjList[v].push(u); // Undirected for freely drawn graphs
                 treeEdges.push([u, v]);
             });
+            // Sort adjacency lists numerically for consistent textbook traversals
+            adjList.forEach(neighbors => neighbors.sort((a, b) => a - b));
         } else {
             for(let i=0; i<n; i++) {
                 if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
