@@ -134,7 +134,7 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-<div class="container mx-auto px-4 py-6 flex-grow flex flex-col max-w-7xl">
+<div class="container mx-auto px-4 py-6 flex-grow flex flex-col max-w-[1600px] w-full">
     
     <header class="mb-6 text-center">
         <h1 class="text-3xl md:text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400" id="main-title">
@@ -216,10 +216,28 @@
                 </div>
             </div>
 
-            <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-glow relative overflow-hidden flex-grow flex flex-col justify-between" style="min-height: 550px;">
+            <div class="bg-zinc-900 rounded-xl p-4 border border-zinc-800 shadow-glow relative overflow-hidden flex-grow flex flex-col justify-between" style="min-height: 700px;">
                 
                 <div id="visualization-area" class="relative w-full h-full flex-grow mt-2">
                     
+                    <!-- Graph Drawing Canvas Overlay -->
+                    <div id="draw-canvas" class="absolute inset-0 z-50 hidden bg-zinc-950/90 backdrop-blur-sm rounded-xl cursor-crosshair overflow-hidden">
+                        <svg id="draw-svg" class="absolute inset-0 w-full h-full pointer-events-none"></svg>
+                        <div id="draw-nodes-container" class="absolute inset-0"></div>
+                        
+                        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 flex gap-2 p-2 bg-zinc-900 rounded-lg border border-zinc-700 shadow-2xl pointer-events-auto">
+                            <button id="tool-node" class="px-3 py-1.5 bg-emerald-600 rounded text-white text-xs font-bold draw-toolbar-btn transition-colors">Add Node</button>
+                            <button id="tool-edge" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-xs font-bold draw-toolbar-btn transition-colors">Add Edge</button>
+                            <button id="tool-start" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-white text-xs font-bold draw-toolbar-btn transition-colors">Set Start</button>
+                            <div class="w-px bg-zinc-700 mx-1"></div>
+                            <button id="tool-clear" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 rounded text-white text-xs font-bold transition-colors">Clear</button>
+                            <button id="tool-done" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-white text-xs font-bold transition-colors ml-2 shadow">Start Search</button>
+                        </div>
+                        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-zinc-400 text-xs text-center font-medium bg-zinc-900/80 px-4 py-2 rounded-full border border-zinc-800 pointer-events-none">
+                            Click canvas to add nodes. Click nodes to add edges or set start vertex.
+                        </div>
+                    </div>
+
                     <!-- SVG Overlay for Tree Edges -->
                     <svg id="tree-svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
 
@@ -279,7 +297,7 @@
                 </div>
                 
                 <!-- Dynamic Text Explanation -->
-                <div class="p-6 flex-grow overflow-y-auto max-h-[600px]">
+                <div class="p-6 flex-grow overflow-y-auto max-h-[750px]">
                     <div id="explanation-text" class="text-base md:text-sm leading-relaxed space-y-4 text-zinc-300">
                         <p>Select an algorithm and click <strong class="text-emerald-400">Play</strong> to begin.</p>
                     </div>
@@ -289,7 +307,6 @@
 
     </div>
 </div>
-<footer style="text-align: center">&copy; Aryan A. Bhogayata</footer>
 
 <script>
     const ARRAY_SIZE = 12;
@@ -334,6 +351,14 @@
     // Search specific state
     let searchTargetValue = null;
     let userDefinedTarget = false;
+    
+    // Custom Graph State
+    let useCustomGraph = false;
+    let customGraphNodes = [];
+    let customGraphEdges = [];
+    let graphStartVertex = 0;
+    let drawTool = 'node';
+    let drawEdgeStart = null;
 
     // DOM Elements
     const arrayContainer = document.getElementById('array-container');
@@ -351,6 +376,7 @@
     function init() {
         createBucketBackgrounds();
         setupEventListeners();
+        setupDrawCanvas();
         populateAlgoDropdown();
         handleAlgoChange();
     }
@@ -430,6 +456,27 @@
                 </div>
             `;
             
+            if (currentAlgoId === 'bfs' || currentAlgoId === 'dfs') {
+                dynamicOptionsContainer.innerHTML += `
+                    <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 ml-2">
+                        <label for="search-start-input" class="text-zinc-400 text-xs uppercase font-bold">Start:</label>
+                        <input type="number" id="search-start-input" class="bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-indigo-400 font-mono font-bold text-sm w-12 text-center focus:outline-none focus:border-indigo-500" value="${graphStartVertex}" min="0">
+                    </div>
+                    <button id="btn-draw-graph" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-md text-xs text-white font-bold transition-colors ml-2 shadow border border-emerald-700">
+                        Draw Graph
+                    </button>
+                `;
+                
+                document.getElementById('btn-draw-graph').addEventListener('click', enterDrawMode);
+                document.getElementById('search-start-input').addEventListener('change', (e) => {
+                    let val = parseInt(e.target.value);
+                    if(!isNaN(val) && val >= 0) {
+                        graphStartVertex = val;
+                        if(originalArray.length > 0) resetState();
+                    }
+                });
+            }
+            
             document.getElementById('btn-set-target').addEventListener('click', () => {
                 const val = parseInt(document.getElementById('search-target-input').value, 10);
                 if (!isNaN(val)) {
@@ -462,6 +509,7 @@
     }
 
     function generateNewArray() {
+        useCustomGraph = false;
         originalArray = [];
         for (let i = 0; i < ARRAY_SIZE; i++) {
             originalArray.push({
@@ -485,7 +533,148 @@
 
         originalArray = parsedArray.map((val, idx) => ({ id: `custom-${Date.now()}-${idx}`, val: val }));
         userDefinedTarget = false;
+        useCustomGraph = false;
         resetState();
+    }
+
+    function setupDrawCanvas() {
+        const canvas = document.getElementById('draw-canvas');
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawTool === 'edge' && drawEdgeStart !== null) {
+                const rect = canvas.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                
+                const tempLine = document.getElementById('temp-draw-edge');
+                if (tempLine) {
+                    tempLine.setAttribute('x2', `${x}%`);
+                    tempLine.setAttribute('y2', `${y}%`);
+                }
+            }
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if (e.target.closest('.draw-toolbar-btn') || e.target.closest('.draw-node')) return;
+            if (drawTool === 'node') {
+                const rect = canvas.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                customGraphNodes.push({ val: customGraphNodes.length, x, y });
+                renderDrawState();
+            } else if (drawTool === 'edge') {
+                // Cancel drawing an edge if clicking on empty canvas space
+                drawEdgeStart = null;
+                renderDrawState();
+            }
+        });
+
+        ['node', 'edge', 'start'].forEach(tool => {
+            document.getElementById(`tool-${tool}`).addEventListener('click', (e) => {
+                drawTool = tool; drawEdgeStart = null;
+                document.querySelectorAll('.draw-toolbar-btn').forEach(btn => {
+                    if(btn.id.startsWith('tool-') && ['node','edge','start'].includes(btn.id.replace('tool-',''))) {
+                        btn.classList.replace('bg-emerald-600', 'bg-zinc-800');
+                    }
+                });
+                e.target.classList.replace('bg-zinc-800', 'bg-emerald-600');
+                renderDrawState();
+            });
+        });
+
+        document.getElementById('tool-clear').addEventListener('click', () => {
+            customGraphNodes = []; customGraphEdges = []; graphStartVertex = 0; drawEdgeStart = null; renderDrawState();
+        });
+
+        document.getElementById('tool-done').addEventListener('click', () => {
+            if(customGraphNodes.length > 0) {
+                useCustomGraph = true;
+                if(graphStartVertex >= customGraphNodes.length) graphStartVertex = 0;
+                originalArray = customGraphNodes.map((n, i) => ({
+                    id: `custom-graph-${Date.now()}-${i}`, val: n.val, x: n.x, y: n.y
+                }));
+                const startInput = document.getElementById('search-start-input');
+                if(startInput) { startInput.max = customGraphNodes.length - 1; startInput.value = graphStartVertex; }
+            }
+            exitDrawMode();
+            resetState();
+        });
+    }
+
+    function enterDrawMode() {
+        pauseAnimation();
+        document.getElementById('draw-canvas').classList.remove('hidden');
+        if(!useCustomGraph) { customGraphNodes = []; customGraphEdges = []; graphStartVertex = 0; drawEdgeStart = null; }
+        renderDrawState();
+    }
+
+    function exitDrawMode() {
+        document.getElementById('draw-canvas').classList.add('hidden');
+    }
+
+    function renderDrawState() {
+        const svg = document.getElementById('draw-svg');
+        const container = document.getElementById('draw-nodes-container');
+        svg.innerHTML = '';
+        customGraphEdges.forEach(([u, v]) => {
+            const p1 = customGraphNodes[u]; const p2 = customGraphNodes[v];
+            if(!p1 || !p2) return;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${p1.y}%`);
+            line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${p2.y}%`);
+            line.setAttribute('stroke', '#52525b'); line.setAttribute('stroke-width', '2');
+            svg.appendChild(line);
+        });
+
+        // Add interactive temp line for drawing edges
+        const tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tempLine.id = 'temp-draw-edge';
+        tempLine.setAttribute('stroke', '#fbbf24');
+        tempLine.setAttribute('stroke-width', '3');
+        tempLine.setAttribute('stroke-dasharray', '6,4');
+        tempLine.style.display = drawEdgeStart !== null ? 'block' : 'none';
+        if (drawEdgeStart !== null && customGraphNodes[drawEdgeStart]) {
+            tempLine.setAttribute('x1', `${customGraphNodes[drawEdgeStart].x}%`);
+            tempLine.setAttribute('y1', `${customGraphNodes[drawEdgeStart].y}%`);
+            tempLine.setAttribute('x2', `${customGraphNodes[drawEdgeStart].x}%`);
+            tempLine.setAttribute('y2', `${customGraphNodes[drawEdgeStart].y}%`);
+        }
+        svg.appendChild(tempLine);
+
+        container.innerHTML = '';
+        customGraphNodes.forEach((node, idx) => {
+            const el = document.createElement('div');
+            el.className = `draw-node absolute flex items-center justify-center rounded-full font-mono font-bold text-white shadow-lg cursor-pointer transform -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-110 z-20`;
+            el.style.width = '3rem'; el.style.height = '3rem';
+            el.style.left = `${node.x}%`; el.style.top = `${node.y}%`;
+            el.innerText = node.val;
+            
+            if (idx === graphStartVertex) { el.style.border = '3px solid #a855f7'; el.style.backgroundColor = '#4f46e5'; }
+            else if (drawTool === 'edge' && drawEdgeStart === idx) { el.style.border = '3px solid #fbbf24'; el.style.backgroundColor = '#f59e0b'; }
+            else { el.style.backgroundColor = '#10b981'; }
+
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (drawTool === 'edge') {
+                    if (drawEdgeStart === null) drawEdgeStart = idx;
+                    else { 
+                        if (drawEdgeStart !== idx) {
+                            // Prevent duplicate edges between the same two nodes
+                            const exists = customGraphEdges.some(edge => 
+                                (edge[0] === drawEdgeStart && edge[1] === idx) || 
+                                (edge[0] === idx && edge[1] === drawEdgeStart)
+                            );
+                            if (!exists) {
+                                customGraphEdges.push([drawEdgeStart, idx]);
+                            }
+                        }
+                        drawEdgeStart = null; 
+                    }
+                } else if (drawTool === 'start') graphStartVertex = idx;
+                renderDrawState();
+            });
+            container.appendChild(el);
+        });
     }
 
     function resetState() {
@@ -1058,14 +1247,24 @@
     function generateDFSSteps(arr) {
         let visited = []; let found = -1; let n = arr.length;
         let treeEdges = [];
-        for(let i=0; i<n; i++) {
-            if(2*i+1 < n) treeEdges.push([i, 2*i+1]);
-            if(2*i+2 < n) treeEdges.push([i, 2*i+2]);
+        let adjList = Array.from({length: n}, () => []);
+        
+        if (useCustomGraph) {
+            customGraphEdges.forEach(([u, v]) => {
+                adjList[u].push(v);
+                adjList[v].push(u); // Undirected for freely drawn graphs
+                treeEdges.push([u, v]);
+            });
+        } else {
+            for(let i=0; i<n; i++) {
+                if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
+                if(2*i+2 < n) { treeEdges.push([i, 2*i+2]); adjList[i].push(2*i+2); }
+            }
         }
         
         let displayStack = [];
 
-        recordSearch(arr, visited, [], -1, [], `Morphing into Tree for DFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: []});
+        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for DFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: []});
 
         function dfs(idx, parentIdx = -1) {
             if (idx >= n || found !== -1) return;
@@ -1073,42 +1272,62 @@
             displayStack.push(idx);
             let m = [{label: 'DFS', idx: idx, color: '#06b6d4'}];
             
-            recordSearch(arr, visited, [idx], -1, m, `Traversing to node ${idx} (Value: ${arr[idx].val}). Pushed to Stack.`, 'compare', {type: 'tree', edges: treeEdges, travel: parentIdx !== -1 ? [parentIdx, idx] : null}, {type: 'Stack', elements: [...displayStack]});
+            recordSearch(arr, visited, [idx], -1, m, `Traversing to node ${idx} (Value: ${arr[idx].val}). Pushed to Stack.`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: parentIdx !== -1 ? [parentIdx, idx] : null}, {type: 'Stack', elements: [...displayStack]});
             
             visited.push(idx);
             
             if (arr[idx].val === searchTargetValue) {
                 found = idx;
-                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong>`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: [...displayStack]});
+                let seq = visited.join(' &rarr; ');
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: [...displayStack]});
                 return;
             }
             
-            // Traverse children
-            if (2*idx + 1 < n) dfs(2*idx + 1, idx);
-            if (2*idx + 2 < n && found === -1) dfs(2*idx + 2, idx);
+            // Traverse children/neighbors
+            for (let neighbor of adjList[idx]) {
+                if (found === -1 && !visited.includes(neighbor)) {
+                    dfs(neighbor, idx);
+                }
+            }
             
             if (found === -1) {
-                let popped = displayStack.pop();
-                recordSearch(arr, visited, [], -1, m, `Node ${idx} fully explored. Popping from Stack and backtracking.`, 'idle', {type: 'tree', edges: treeEdges, travel: parentIdx !== -1 ? [idx, parentIdx] : null}, {type: 'Stack', elements: [...displayStack]});
+                displayStack.pop();
+                recordSearch(arr, visited, [], -1, m, `Node ${idx} fully explored. Popping from Stack and backtracking.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: parentIdx !== -1 ? [idx, parentIdx] : null, isBacktrack: true}, {type: 'Stack', elements: [...displayStack]});
             }
         }
         
-        dfs(0);
-        if (found === -1) recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Stack is empty.`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Stack', elements: []});
+        let start = graphStartVertex < n ? graphStartVertex : 0;
+        dfs(start);
+        if (found === -1) {
+            let seq = visited.join(' &rarr; ');
+            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Stack is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: []});
+        }
     }
 
     function generateBFSSteps(arr) {
         let visited = []; let found = -1; let n = arr.length;
         let treeEdges = [];
-        for(let i=0; i<n; i++) {
-            if(2*i+1 < n) treeEdges.push([i, 2*i+1]);
-            if(2*i+2 < n) treeEdges.push([i, 2*i+2]);
+        let adjList = Array.from({length: n}, () => []);
+        
+        if (useCustomGraph) {
+            customGraphEdges.forEach(([u, v]) => {
+                adjList[u].push(v);
+                adjList[v].push(u); // Undirected for freely drawn graphs
+                treeEdges.push([u, v]);
+            });
+        } else {
+            for(let i=0; i<n; i++) {
+                if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
+                if(2*i+2 < n) { treeEdges.push([i, 2*i+2]); adjList[i].push(2*i+2); }
+            }
         }
         
-        let q = [{idx: 0, parent: -1}];
-        let displayQueue = [0];
+        let start = graphStartVertex < n ? graphStartVertex : 0;
+        let q = [{idx: start, parent: -1}];
+        let displayQueue = [start];
+        let enqueued = new Set([start]);
 
-        recordSearch(arr, visited, [], -1, [], `Morphing into Tree for BFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for BFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
 
         while (q.length > 0 && found === -1) {
             let curr = q.shift();
@@ -1118,23 +1337,33 @@
             visited.push(idx);
             let m = [{label: 'BFS', idx: idx, color: '#fbbf24'}];
             
-            recordSearch(arr, visited, [idx], -1, m, `Dequeued node ${idx} (Value: ${arr[idx].val}).`, 'compare', {type: 'tree', edges: treeEdges, travel: curr.parent !== -1 ? [curr.parent, idx] : null}, {type: 'Queue', elements: [...displayQueue]});
+            recordSearch(arr, visited, [idx], -1, m, `Dequeued node ${idx} (Value: ${arr[idx].val}).`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: curr.parent !== -1 ? [curr.parent, idx] : null}, {type: 'Queue', elements: [...displayQueue]});
             
             if (arr[idx].val === searchTargetValue) {
                 found = idx;
-                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong>`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+                let seq = visited.join(' &rarr; ');
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
                 break;
             }
             
             let pushed = false;
-            if (2*idx + 1 < n) { q.push({idx: 2*idx + 1, parent: idx}); displayQueue.push(2*idx + 1); pushed = true; }
-            if (2*idx + 2 < n) { q.push({idx: 2*idx + 2, parent: idx}); displayQueue.push(2*idx + 2); pushed = true; }
+            for (let neighbor of adjList[idx]) {
+                if (!enqueued.has(neighbor)) {
+                    q.push({idx: neighbor, parent: idx}); 
+                    displayQueue.push(neighbor); 
+                    enqueued.add(neighbor);
+                    pushed = true;
+                }
+            }
             
             if (pushed && found === -1) {
-                recordSearch(arr, visited, [idx], -1, m, `Enqueued children of node ${idx}.`, 'idle', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: [...displayQueue]});
+                recordSearch(arr, visited, [idx], -1, m, `Enqueued children/neighbors of node ${idx}.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
             }
         }
-        if (found === -1) recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Queue is empty.`, 'complete', {type: 'tree', edges: treeEdges}, {type: 'Queue', elements: []});
+        if (found === -1) {
+            let seq = visited.join(' &rarr; ');
+            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Queue is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: []});
+        }
     }
 
     function getLeftPos(index, totalItems) {
@@ -1171,6 +1400,13 @@
         
         const maxVal = Math.max(...arr.map(a => a.val), 1);
         const itemWidth = getWidth(arr.length);
+        const isGraphAlgo = currentCategory === 'search' && (currentAlgoId === 'bfs' || currentAlgoId === 'dfs');
+
+        if (useCustomGraph && isGraphAlgo) {
+            indicesContainer.style.opacity = '0';
+        } else {
+            indicesContainer.style.opacity = '1';
+        }
         
         arr.forEach((item, idx) => {
             // Index Labels
@@ -1187,11 +1423,23 @@
             bar.id = item.id;
             const heightPct = Math.max((item.val / maxVal) * 75, 10); // Standardize initial max height to 75%
             
-            bar.className = 'node-element layout-linear color-default';
-            bar.style.width = itemWidth;
-            bar.style.height = `${heightPct}%`;
-            bar.style.left = getLeftPos(idx, arr.length);
-            bar.style.bottom = '15%'; // Base linear bottom
+            if (useCustomGraph && isGraphAlgo && item.x !== undefined) {
+                // Render custom nodes directly at their coordinates to prevent "flying from bottom" scattering
+                bar.className = 'node-element layout-tree color-default';
+                bar.style.left = `${item.x}%`;
+                bar.style.top = `${item.y}%`;
+                bar.style.bottom = 'auto';
+                bar.style.transform = 'translate(-50%, -50%)';
+            } else {
+                // Render standard array
+                bar.className = 'node-element layout-linear color-default';
+                bar.style.width = itemWidth;
+                bar.style.height = `${heightPct}%`;
+                bar.style.left = getLeftPos(idx, arr.length);
+                bar.style.bottom = '15%'; // Base linear bottom
+                bar.style.top = 'auto';
+                bar.style.transform = 'translateX(0)';
+            }
             bar.innerText = item.val;
             
             arrayContainer.appendChild(bar);
@@ -1246,11 +1494,18 @@
         if (layout.type === 'tree' && layout.edges) {
             // Draw static edges
             layout.edges.forEach(([u, v]) => {
-                const p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
-                const p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
+                let p1, p2;
+                if(layout.isCustom) {
+                    p1 = { x: originalArray[u].x, y: originalArray[u].y };
+                    p2 = { x: originalArray[v].x, y: originalArray[v].y };
+                } else {
+                    p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
+                    p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
+                    p1.y = 100 - p1.y; p2.y = 100 - p2.y;
+                }
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${100 - p1.y}%`);
-                line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${100 - p2.y}%`);
+                line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${p1.y}%`);
+                line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${p2.y}%`);
                 line.setAttribute('stroke', '#3f3f46'); // zinc-700
                 line.setAttribute('stroke-width', '2');
                 line.setAttribute('class', 'tree-line');
@@ -1260,13 +1515,20 @@
             // Draw dynamic travel edge (for Search algos)
             if (layout.travel) {
                 const [u, v] = layout.travel;
-                const p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
-                const p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
-                const isBacktrack = p1.y < p2.y; // If traveling up the tree, it's a backtrack
+                let p1, p2;
+                if(layout.isCustom) {
+                    p1 = { x: originalArray[u].x, y: originalArray[u].y };
+                    p2 = { x: originalArray[v].x, y: originalArray[v].y };
+                } else {
+                    p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
+                    p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
+                    p1.y = 100 - p1.y; p2.y = 100 - p2.y;
+                }
+                const isBacktrack = layout.isBacktrack || (!layout.isCustom && p1.y > p2.y);
                 
                 const travelLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                travelLine.setAttribute('x1', `${p1.x}%`); travelLine.setAttribute('y1', `${100 - p1.y}%`);
-                travelLine.setAttribute('x2', `${p2.x}%`); travelLine.setAttribute('y2', `${100 - p2.y}%`);
+                travelLine.setAttribute('x1', `${p1.x}%`); travelLine.setAttribute('y1', `${p1.y}%`);
+                travelLine.setAttribute('x2', `${p2.x}%`); travelLine.setAttribute('y2', `${p2.y}%`);
                 travelLine.setAttribute('stroke', isBacktrack ? '#f43f5e' : '#06b6d4'); // Rose for Backtrack, Cyan for Forward
                 travelLine.setAttribute('stroke-width', '4');
                 travelLine.setAttribute('class', 'tree-line');
@@ -1335,15 +1597,26 @@
                 if (layout.type === 'tree' && (!isSorted || !layout.showArray)) {
                     // Tree Node morphing
                     newClasses += 'layout-tree ';
-                    const coords = getTreeCoordinates(inMainIdx, originalArray.length, layout.showArray);
-                    bar.style.left = `${coords.x}%`;
-                    bar.style.bottom = `${coords.y}%`;
+                    if (layout.isCustom && step.array[inMainIdx].x !== undefined) {
+                        bar.style.left = `${step.array[inMainIdx].x}%`;
+                        bar.style.top = `${step.array[inMainIdx].y}%`;
+                        bar.style.bottom = 'auto';
+                        bar.style.transform = 'translate(-50%, -50%)'; // Fix alignment for custom nodes
+                    } else {
+                        const coords = getTreeCoordinates(inMainIdx, originalArray.length, layout.showArray);
+                        bar.style.left = `${coords.x}%`;
+                        bar.style.bottom = `${coords.y}%`;
+                        bar.style.top = 'auto';
+                        bar.style.transform = 'translate(-50%, 50%)'; // Reset for standard tree
+                    }
                     bar.innerText = step.array[inMainIdx].val;
                     bar.style.height = ''; 
                     bar.style.width = '';
                 } else if (layout.type === 'merge') {
                     // Merge Sort (Bars with Y offsets)
                     newClasses += 'layout-linear ';
+                    bar.style.transform = 'translateX(0)';
+                    bar.style.top = 'auto';
                     bar.style.left = getLeftPos(placeIdx, originalArray.length);
                     bar.style.bottom = `${step.array[inMainIdx].yLevel}%`;
                     bar.style.width = standardWidth;
@@ -1352,6 +1625,8 @@
                 } else {
                     // Standard Linear Layout (also catches sorted elements falling out of tree)
                     newClasses += 'layout-linear ';
+                    bar.style.transform = 'translateX(0)';
+                    bar.style.top = 'auto';
                     bar.style.left = getLeftPos(placeIdx, originalArray.length);
                     
                     if (layout.type === 'buckets') {
