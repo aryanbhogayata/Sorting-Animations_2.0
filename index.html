@@ -173,7 +173,7 @@
                     </div>
 
                     <!-- Dynamic Options (Heap Min/Max, Target Search) -->
-                    <div id="dynamic-options-container" class="ml-auto flex items-center gap-3">
+                    <div id="dynamic-options-container" class="ml-auto flex flex-wrap items-center gap-3">
                         <!-- Injected via JS -->
                     </div>
                 </div>
@@ -463,12 +463,29 @@
                         <label for="search-start-input" class="text-zinc-400 text-xs uppercase font-bold">Start:</label>
                         <input type="number" id="search-start-input" class="bg-zinc-950 border border-zinc-700 rounded px-2 py-0.5 text-indigo-400 font-mono font-bold text-sm w-12 text-center focus:outline-none focus:border-indigo-500" value="${graphStartVertex}" min="0">
                     </div>
+                    <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 ml-2">
+                        <label class="text-zinc-400 text-xs uppercase font-bold">Graph:</label>
+                        <select id="graph-type-select" class="bg-transparent text-emerald-400 text-sm font-bold focus:outline-none cursor-pointer">
+                            <option value="directed" selected>Directed</option>
+                            <option value="undirected">Undirected</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 ml-2">
+                        <label class="text-zinc-400 text-xs uppercase font-bold">Tie-Break:</label>
+                        <select id="search-order-select" class="bg-transparent text-emerald-400 text-sm font-bold focus:outline-none cursor-pointer">
+                            <option value="asc">Lowest ID</option>
+                            <option value="desc">Highest ID</option>
+                            <option value="draw">Input Order</option>
+                        </select>
+                    </div>
                     <button id="btn-draw-graph" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-md text-xs text-white font-bold transition-colors ml-2 shadow border border-emerald-700">
                         Draw Graph
                     </button>
                 `;
                 
                 document.getElementById('btn-draw-graph').addEventListener('click', enterDrawMode);
+                document.getElementById('search-order-select').addEventListener('change', resetState);
+                document.getElementById('graph-type-select').addEventListener('change', resetState);
                 document.getElementById('search-start-input').addEventListener('change', (e) => {
                     let val = parseInt(e.target.value);
                     if(!isNaN(val) && val >= 0) {
@@ -616,7 +633,18 @@
     function renderDrawState() {
         const svg = document.getElementById('draw-svg');
         const container = document.getElementById('draw-nodes-container');
-        svg.innerHTML = '';
+        
+        const typeSelect = document.getElementById('graph-type-select');
+        const isDirected = typeSelect ? typeSelect.value === 'directed' : true;
+        
+        svg.innerHTML = `
+            <defs>
+                <marker id="draw-arrow" markerWidth="6" markerHeight="6" refX="22" refY="3" orient="auto">
+                    <polygon points="0 0, 6 3, 0 6" fill="#52525b" />
+                </marker>
+            </defs>
+        `;
+        
         customGraphEdges.forEach(([u, v]) => {
             const p1 = customGraphNodes[u]; const p2 = customGraphNodes[v];
             if(!p1 || !p2) return;
@@ -624,6 +652,7 @@
             line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${p1.y}%`);
             line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${p2.y}%`);
             line.setAttribute('stroke', '#52525b'); line.setAttribute('stroke-width', '2');
+            if (isDirected) line.setAttribute('marker-end', 'url(#draw-arrow)');
             svg.appendChild(line);
         });
 
@@ -1250,24 +1279,37 @@
         let treeEdges = [];
         let adjList = Array.from({length: n}, () => []);
         
+        const orderSelect = document.getElementById('search-order-select');
+        const orderMode = orderSelect ? orderSelect.value : 'asc';
+        const typeSelect = document.getElementById('graph-type-select');
+        const isDirected = typeSelect ? typeSelect.value === 'directed' : true;
+
         if (useCustomGraph) {
             customGraphEdges.forEach(([u, v]) => {
                 adjList[u].push(v);
-                adjList[v].push(u); // Undirected for freely drawn graphs
+                if (!isDirected) {
+                    adjList[v].push(u); // Only add reverse if undirected
+                }
                 treeEdges.push([u, v]);
             });
-            // Sort adjacency lists numerically for consistent textbook traversals
-            adjList.forEach(neighbors => neighbors.sort((a, b) => a - b));
+            
+            // If not in Input Order mode, sort the adjacency list mathematically
+            if (orderMode !== 'draw') {
+                adjList.forEach(neighbors => neighbors.sort((a, b) => orderMode === 'desc' ? b - a : a - b));
+            }
         } else {
             for(let i=0; i<n; i++) {
                 if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
                 if(2*i+2 < n) { treeEdges.push([i, 2*i+2]); adjList[i].push(2*i+2); }
             }
+            if (orderMode !== 'draw') {
+                adjList.forEach(neighbors => neighbors.sort((a, b) => orderMode === 'desc' ? b - a : a - b));
+            }
         }
         
         let displayStack = [];
 
-        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for DFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: []});
+        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for DFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Stack', elements: []});
 
         function dfs(idx, parentIdx = -1) {
             if (idx >= n || found !== -1) return;
@@ -1275,14 +1317,14 @@
             displayStack.push(idx);
             let m = [{label: 'DFS', idx: idx, color: '#06b6d4'}];
             
-            recordSearch(arr, visited, [idx], -1, m, `Traversing to node ${idx} (Value: ${arr[idx].val}). Pushed to Stack.`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: parentIdx !== -1 ? [parentIdx, idx] : null}, {type: 'Stack', elements: [...displayStack]});
+            recordSearch(arr, visited, [idx], -1, m, `Traversing to node ${idx} (Value: ${arr[idx].val}). Pushed to Stack.`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected, travel: parentIdx !== -1 ? [parentIdx, idx] : null}, {type: 'Stack', elements: [...displayStack]});
             
             visited.push(idx);
             
             if (arr[idx].val === searchTargetValue) {
                 found = idx;
                 let seq = visited.join(' &rarr; ');
-                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: [...displayStack]});
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Stack', elements: [...displayStack]});
                 return;
             }
             
@@ -1295,7 +1337,7 @@
             
             if (found === -1) {
                 displayStack.pop();
-                recordSearch(arr, visited, [], -1, m, `Node ${idx} fully explored. Popping from Stack and backtracking.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: parentIdx !== -1 ? [idx, parentIdx] : null, isBacktrack: true}, {type: 'Stack', elements: [...displayStack]});
+                recordSearch(arr, visited, [], -1, m, `Node ${idx} fully explored. Popping from Stack and backtracking.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected, travel: parentIdx !== -1 ? [idx, parentIdx] : null, isBacktrack: true}, {type: 'Stack', elements: [...displayStack]});
             }
         }
         
@@ -1303,7 +1345,7 @@
         dfs(start);
         if (found === -1) {
             let seq = visited.join(' &rarr; ');
-            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Stack is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Stack', elements: []});
+            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Stack is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Stack', elements: []});
         }
     }
 
@@ -1312,18 +1354,31 @@
         let treeEdges = [];
         let adjList = Array.from({length: n}, () => []);
         
+        const orderSelect = document.getElementById('search-order-select');
+        const orderMode = orderSelect ? orderSelect.value : 'asc';
+        const typeSelect = document.getElementById('graph-type-select');
+        const isDirected = typeSelect ? typeSelect.value === 'directed' : true;
+
         if (useCustomGraph) {
             customGraphEdges.forEach(([u, v]) => {
                 adjList[u].push(v);
-                adjList[v].push(u); // Undirected for freely drawn graphs
+                if (!isDirected) {
+                    adjList[v].push(u);
+                }
                 treeEdges.push([u, v]);
             });
-            // Sort adjacency lists numerically for consistent textbook traversals
-            adjList.forEach(neighbors => neighbors.sort((a, b) => a - b));
+            
+            // If not in Input Order mode, sort the adjacency list mathematically
+            if (orderMode !== 'draw') {
+                adjList.forEach(neighbors => neighbors.sort((a, b) => orderMode === 'desc' ? b - a : a - b));
+            }
         } else {
             for(let i=0; i<n; i++) {
                 if(2*i+1 < n) { treeEdges.push([i, 2*i+1]); adjList[i].push(2*i+1); }
                 if(2*i+2 < n) { treeEdges.push([i, 2*i+2]); adjList[i].push(2*i+2); }
+            }
+            if (orderMode !== 'draw') {
+                adjList.forEach(neighbors => neighbors.sort((a, b) => orderMode === 'desc' ? b - a : a - b));
             }
         }
         
@@ -1332,7 +1387,7 @@
         let displayQueue = [start];
         let enqueued = new Set([start]);
 
-        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for BFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
+        recordSearch(arr, visited, [], -1, [], `Morphing into Graph for BFS. Looking for <span class="text-purple-400 font-bold">${searchTargetValue}</span>.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Queue', elements: [...displayQueue]});
 
         while (q.length > 0 && found === -1) {
             let curr = q.shift();
@@ -1342,12 +1397,12 @@
             visited.push(idx);
             let m = [{label: 'BFS', idx: idx, color: '#fbbf24'}];
             
-            recordSearch(arr, visited, [idx], -1, m, `Dequeued node ${idx} (Value: ${arr[idx].val}).`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, travel: curr.parent !== -1 ? [curr.parent, idx] : null}, {type: 'Queue', elements: [...displayQueue]});
+            recordSearch(arr, visited, [idx], -1, m, `Dequeued node ${idx} (Value: ${arr[idx].val}).`, 'compare', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected, travel: curr.parent !== -1 ? [curr.parent, idx] : null}, {type: 'Queue', elements: [...displayQueue]});
             
             if (arr[idx].val === searchTargetValue) {
                 found = idx;
                 let seq = visited.join(' &rarr; ');
-                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
+                recordSearch(arr, visited, [], idx, [{label: 'Found!', idx: idx, color: '#a855f7'}], `<strong>Target found at node ${idx}!</strong><br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Queue', elements: [...displayQueue]});
                 break;
             }
             
@@ -1362,12 +1417,12 @@
             }
             
             if (pushed && found === -1) {
-                recordSearch(arr, visited, [idx], -1, m, `Enqueued children/neighbors of node ${idx}.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: [...displayQueue]});
+                recordSearch(arr, visited, [idx], -1, m, `Enqueued children/neighbors of node ${idx}.`, 'idle', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Queue', elements: [...displayQueue]});
             }
         }
         if (found === -1) {
             let seq = visited.join(' &rarr; ');
-            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Queue is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph}, {type: 'Queue', elements: []});
+            recordSearch(arr, visited, [], -1, [], `<strong>Target not found.</strong> Queue is empty.<br><br><span class="text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Traversal Sequence:</span><br><span class="font-mono text-emerald-400 break-words">${seq}</span>`, 'complete', {type: 'tree', edges: treeEdges, isCustom: useCustomGraph, isDirected: isDirected}, {type: 'Queue', elements: []});
         }
     }
 
@@ -1493,6 +1548,9 @@
                 <marker id="arrowhead-back" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
                     <polygon points="6 0, 0 3, 6 6" fill="#f43f5e" />
                 </marker>
+                <marker id="static-arrow" markerWidth="6" markerHeight="6" refX="22" refY="3" orient="auto">
+                    <polygon points="0 0, 6 3, 0 6" fill="#3f3f46" />
+                </marker>
             </defs>
         `;
         
@@ -1514,6 +1572,7 @@
                 line.setAttribute('stroke', '#3f3f46'); // zinc-700
                 line.setAttribute('stroke-width', '2');
                 line.setAttribute('class', 'tree-line');
+                if (layout.isDirected) line.setAttribute('marker-end', 'url(#static-arrow)');
                 treeSvgLayer.appendChild(line);
             });
             
