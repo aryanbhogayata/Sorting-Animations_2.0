@@ -126,6 +126,17 @@
             stroke-linecap: round;
         }
 
+        #mouse-spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            background: radial-gradient(circle 800px at var(--mouse-x, 50vw) var(--mouse-y, 50vh), rgba(16, 185, 129, 0.08), transparent 40%);
+        }
+
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #18181b; }
         ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
@@ -134,7 +145,10 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-<div class="container mx-auto px-4 py-6 flex-grow flex flex-col max-w-[1600px] w-full">
+<!-- Dynamic Mouse Spotlight Overlay -->
+<div id="mouse-spotlight"></div>
+
+<div class="container mx-auto px-4 py-6 flex-grow flex flex-col max-w-[1600px] w-full relative z-10">
     
     <header class="mb-6 text-center">
         <h1 class="text-3xl md:text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400" id="main-title">
@@ -306,8 +320,12 @@
         </div>
 
     </div>
+
+    <!-- Center Footer -->
+    <footer class="mt-8 mb-2 text-center text-zinc-500 text-sm font-medium tracking-wide w-full relative z-20">
+        &copy; 2026 Aryan A. Bhogayata
+    </footer>
 </div>
-<footer style="text-align: center;">&copy; Aryan A. Bhogayata</footer>
 
 <script>
     const ARRAY_SIZE = 12;
@@ -393,6 +411,15 @@
     }
 
     function setupEventListeners() {
+        // Spotlight tracking
+        document.addEventListener('mousemove', (e) => {
+            const spotlight = document.getElementById('mouse-spotlight');
+            if (spotlight) {
+                spotlight.style.setProperty('--mouse-x', `${e.clientX}px`);
+                spotlight.style.setProperty('--mouse-y', `${e.clientY}px`);
+            }
+        });
+
         document.getElementById('btn-reset').addEventListener('click', () => { generateNewArray(); resetState(); });
         document.getElementById('btn-load-custom').addEventListener('click', loadCustomArray);
         document.getElementById('custom-array-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') loadCustomArray(); });
