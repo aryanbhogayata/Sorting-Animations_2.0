@@ -289,7 +289,6 @@
 
     </div>
 </div>
-<footer style="text-align: center">&copy; Aryan A. Bhogayata</footer>
 
 <script>
     const ARRAY_SIZE = 12;
@@ -302,10 +301,14 @@
         sort: {
             'quick': { title: "Quick Sort (Hoare)", generator: generateQuickSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n²)", space: "O(log n)", desc: "Picks a pivot, partitions elements smaller to left and larger to right." },
             'bubble': { title: "Bubble Sort", generator: generateBubbleSortSteps, best: "O(n)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Repeatedly swaps adjacent elements if they are in the wrong order." },
+            'cocktail': { title: "Cocktail Sort", generator: generateCocktailSortSteps, best: "O(n)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "A bidirectional Bubble Sort that traverses the array back and forth." },
+            'comb': { title: "Comb Sort", generator: generateCombSortSteps, best: "O(n log n)", avg: "O(n² / 2^p)", worst: "O(n²)", space: "O(1)", desc: "Improves on bubble sort by comparing elements separated by a shrinking gap." },
             'selection': { title: "Selection Sort", generator: generateSelectionSortSteps, best: "O(n²)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Repeatedly finds the minimum element and moves it to the sorted front." },
             'insertion': { title: "Insertion Sort", generator: generateInsertionSortSteps, best: "O(n)", avg: "O(n²)", worst: "O(n²)", space: "O(1)", desc: "Builds the sorted array one item at a time by sliding elements back." },
+            'shell': { title: "Shell Sort", generator: generateShellSortSteps, best: "O(n log n)", avg: "O(n^(4/3))", worst: "O(n²)", space: "O(1)", desc: "An optimization of insertion sort that compares elements separated by a shrinking gap." },
             'merge': { title: "Merge Sort", generator: generateMergeSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(n)", desc: "Recursively divides array into halves and merges them back in sorted order. Notice how blocks drop down to show sub-arrays!" },
             'heap': { title: "Heap Sort", generator: generateHeapSortSteps, best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(1)", desc: "Builds a Binary Heap (Tree), then repeatedly extracts the root to sort." },
+            'counting': { title: "Counting Sort", generator: generateCountingSortSteps, best: "O(n+k)", avg: "O(n+k)", worst: "O(n+k)", space: "O(k)", desc: "Counts the occurrences of each unique value and overwrites the array in sorted order based on those counts." },
             'bucket': { title: "Bucket Sort", generator: generateBucketSortSteps, best: "O(n+k)", avg: "O(n+k)", worst: "O(n²)", space: "O(n+k)", desc: "Distributes elements into distinct horizontal buckets, sorts them, and gathers them." },
             'radix': { title: "Radix Sort (LSD)", generator: generateRadixSortSteps, best: "O(nk)", avg: "O(nk)", worst: "O(nk)", space: "O(n+k)", desc: "Sorts numbers digit by digit using vertical buckets (queues)." }
         },
@@ -725,7 +728,7 @@
 
         function makeState(msg, action, active=[], mrks=[]) {
             // Nodes physically morph into a tree during heap operations
-            record(arr, active, sorted, [], mrks, msg, action, { type: 'tree', edges: treeEdges });
+            record(arr, active, sorted, [], mrks, msg, action, { type: 'tree', edges: treeEdges, showArray: true });
         }
 
         function heapify(n, i) {
@@ -758,19 +761,26 @@
         
         for (let i = Math.floor(n / 2) - 1; i >= 0; i--) heapify(n, i);
 
+        let extractedCount = 0;
         for (let i = n - 1; i > 0; i--) {
             let m = [{label: 'Root', idx: 0, color: '#f43f5e'}, {label: 'End', idx: i, color: '#06b6d4'}];
             makeState(`Swapping root with end of heap (index ${i}).`, 'idle', [0, i], m);
             swap(arr, 0, i);
-            makeState(`Swapped root to end. Element is now sorted.`, 'swap', [0, i], m);
+            
+            // Assign a visual index so it drops into the sorted array left-to-right (0, 1, 2...)
+            arr[i].visualIdx = extractedCount;
+            
+            makeState(`Root extracted and placed into sorted array at index ${extractedCount}.`, 'swap', [0, i], m);
             
             // Remove edge to the sorted element visually
             treeEdges = treeEdges.filter(edge => edge[1] !== i);
             
             sorted.add(i);
+            extractedCount++;
             makeState(`Reducing heap size and fixing root.`, 'idle');
             heapify(i, 0);
         }
+        arr[0].visualIdx = extractedCount;
         sorted.add(0);
         
         // Final state: Return to linear layout
@@ -847,6 +857,147 @@
         }
         for(let i=0; i<arr.length; i++) sorted.add(i);
         record(arr, [], sorted, [], [], `<strong>Radix Sort Complete!</strong>`, 'complete');
+    }
+
+    function generateCocktailSortSteps(arr) {
+        let sorted = new Set();
+        let n = arr.length;
+        let swapped = true;
+        let start = 0;
+        let end = n - 1;
+
+        while (swapped) {
+            swapped = false;
+            for (let i = start; i < end; ++i) {
+                let m = [{label: 'i', idx: i, color: '#fbbf24'}, {label: 'i+1', idx: i+1, color: '#06b6d4'}];
+                record(arr, [i, i+1], sorted, [], m, `Forward Pass: Comparing ${arr[i].val} and ${arr[i+1].val}.`, 'compare');
+                if (arr[i].val > arr[i + 1].val) {
+                    swap(arr, i, i + 1);
+                    swapped = true;
+                    record(arr, [i, i+1], sorted, [], m, `Swapped elements out of order.`, 'swap');
+                }
+            }
+            if (!swapped) break;
+            sorted.add(end);
+            record(arr, [], sorted, [], [], `Max element bubbled to end. Reversing direction...`, 'idle');
+            
+            swapped = false;
+            end = end - 1;
+            
+            for (let i = end - 1; i >= start; --i) {
+                let m = [{label: 'i', idx: i, color: '#fbbf24'}, {label: 'i+1', idx: i+1, color: '#06b6d4'}];
+                record(arr, [i, i+1], sorted, [], m, `Backward Pass: Comparing ${arr[i].val} and ${arr[i+1].val}.`, 'compare');
+                if (arr[i].val > arr[i + 1].val) {
+                    swap(arr, i, i + 1);
+                    swapped = true;
+                    record(arr, [i, i+1], sorted, [], m, `Swapped elements out of order.`, 'swap');
+                }
+            }
+            sorted.add(start);
+            start = start + 1;
+            record(arr, [], sorted, [], [], `Min element bubbled to front. Reversing direction...`, 'idle');
+        }
+        for(let i=0; i<n; i++) sorted.add(i);
+        record(arr, [], sorted, [], [], `<strong>Cocktail Sort Complete!</strong>`, 'complete');
+    }
+
+    function generateCombSortSteps(arr) {
+        let n = arr.length;
+        let gap = n;
+        let swapped = true;
+        let sorted = new Set();
+        const SHRINK_FACTOR = 1.3;
+
+        while (gap !== 1 || swapped) {
+            gap = Math.floor(gap / SHRINK_FACTOR);
+            if (gap < 1) gap = 1;
+            swapped = false;
+
+            record(arr, [], sorted, [], [], `Shrinking gap to <span class="font-mono text-emerald-400">${gap}</span>.`, 'idle');
+
+            for (let i = 0; i < n - gap; i++) {
+                let j = i + gap;
+                let m = [{label: 'i', idx: i, color: '#fbbf24'}, {label: 'i+gap', idx: j, color: '#06b6d4'}];
+                record(arr, [i, j], sorted, [], m, `Comparing elements at gap ${gap}: ${arr[i].val} and ${arr[j].val}.`, 'compare');
+
+                if (arr[i].val > arr[j].val) {
+                    swap(arr, i, j);
+                    swapped = true;
+                    record(arr, [i, j], sorted, [], m, `Swapped elements across the gap.`, 'swap');
+                }
+            }
+        }
+        for(let i=0; i<n; i++) sorted.add(i);
+        record(arr, [], sorted, [], [], `<strong>Comb Sort Complete!</strong>`, 'complete');
+    }
+
+    function generateShellSortSteps(arr) {
+        let n = arr.length;
+        let sorted = new Set();
+        
+        for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
+            record(arr, [], sorted, [], [], `Starting pass with Gap = <span class="font-mono text-emerald-400">${gap}</span>.`, 'idle');
+            
+            for (let i = gap; i < n; i += 1) {
+                let temp = arr[i].val;
+                let j;
+                
+                let m = [{label: 'i', idx: i, color: '#f43f5e'}];
+                record(arr, [i], sorted, [i], m, `Taking element <span class="font-mono">${temp}</span> at index ${i} to insert via gap.`, 'idle');
+                
+                for (j = i; j >= gap && arr[j - gap].val > temp; j -= gap) {
+                    m = [{label: 'cmp', idx: j-gap, color: '#fbbf24'}, {label: 'mv', idx: j, color: '#06b6d4'}];
+                    record(arr, [j-gap, j], sorted, [], m, `Comparing: ${arr[j-gap].val} > ${temp}. Shifting ${arr[j-gap].val} right by gap.`, 'compare');
+                    
+                    swap(arr, j, j - gap); // Visual swap to represent the gap shift
+                    record(arr, [j-gap, j], sorted, [], m, `Shifted.`, 'swap');
+                }
+            }
+        }
+        for(let i=0; i<n; i++) sorted.add(i);
+        record(arr, [], sorted, [], [], `<strong>Shell Sort Complete!</strong>`, 'complete');
+    }
+
+    function generateCountingSortSteps(arr) {
+        let n = arr.length;
+        let sorted = new Set();
+        
+        let max = arr[0].val;
+        let min = arr[0].val;
+        
+        for (let i = 1; i < n; i++) {
+            if (arr[i].val > max) max = arr[i].val;
+            if (arr[i].val < min) min = arr[i].val;
+        }
+        
+        record(arr, [], sorted, [], [], `Phase 1: Scan for range. Min is ${min}, Max is ${max}.`, 'idle');
+        
+        let count = {};
+        
+        for (let i = 0; i < n; i++) {
+            let val = arr[i].val;
+            if (!count[val]) count[val] = 0;
+            count[val]++;
+            
+            let m = [{label: 'Count', idx: i, color: '#06b6d4'}];
+            record(arr, [i], sorted, [], m, `Reading <span class="font-mono text-cyan-400">${val}</span>. Frequency is now ${count[val]}.`, 'compare');
+        }
+        
+        record(arr, [], sorted, [], [], `Phase 2: Overwriting original array using frequency counts.`, 'idle');
+        
+        let k = 0;
+        for (let val = min; val <= max; val++) {
+            while (count[val] && count[val] > 0) {
+                arr[k].val = val; 
+                let m = [{label: 'Write', idx: k, color: '#a855f7'}];
+                record(arr, [k], sorted, [], m, `Placing <span class="font-mono text-purple-400">${val}</span> at index ${k}.`, 'overwrite');
+                sorted.add(k);
+                count[val]--;
+                k++;
+            }
+        }
+        
+        record(arr, [], sorted, [], [], `<strong>Counting Sort Complete!</strong>`, 'complete');
     }
 
     function generateLinearSearchSteps(arr) {
@@ -993,11 +1144,13 @@
         return `calc((100% - ${(totalItems - 1) * GAP_PX}px) / ${totalItems})`;
     }
 
-    function getTreeCoordinates(idx, total) {
+    function getTreeCoordinates(idx, total, isSquished = false) {
         // Returns percentage X and Y for a node in a binary tree
         const level = Math.floor(Math.log2(idx + 1));
         const maxLevel = Math.floor(Math.log2(total));
-        const levelY = 90 - (level * (70 / (maxLevel || 1))); // From top to bottom (90% to 20% in CSS bottom terms)
+        const range = isSquished ? 35 : 70; // Squish vertical height if array is below
+        const top = isSquished ? 90 : 90;
+        const levelY = top - (level * (range / (maxLevel || 1))); // From top to bottom
         
         const nodesInLevel = Math.pow(2, level);
         const posInLevel = idx - (nodesInLevel - 1);
@@ -1006,7 +1159,6 @@
         
         return { x: x, y: levelY };
     }
-
 
     function renderInitialDOM(arr) {
         arrayContainer.innerHTML = '';
@@ -1070,6 +1222,9 @@
         if (layout.type === 'buckets') {
             bucketsBgContainer.classList.remove('opacity-0');
             indicesContainer.style.top = '10%'; // Shift indices down slightly
+        } else if (layout.type === 'tree' && layout.showArray) {
+            bucketsBgContainer.classList.add('opacity-0');
+            indicesContainer.style.top = '50%'; // Shift indices down right above the bottom array
         } else {
             bucketsBgContainer.classList.add('opacity-0');
             indicesContainer.style.top = '0';
@@ -1090,8 +1245,8 @@
         if (layout.type === 'tree' && layout.edges) {
             // Draw static edges
             layout.edges.forEach(([u, v]) => {
-                const p1 = getTreeCoordinates(u, originalArray.length);
-                const p2 = getTreeCoordinates(v, originalArray.length);
+                const p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
+                const p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', `${p1.x}%`); line.setAttribute('y1', `${100 - p1.y}%`);
                 line.setAttribute('x2', `${p2.x}%`); line.setAttribute('y2', `${100 - p2.y}%`);
@@ -1104,8 +1259,8 @@
             // Draw dynamic travel edge (for Search algos)
             if (layout.travel) {
                 const [u, v] = layout.travel;
-                const p1 = getTreeCoordinates(u, originalArray.length);
-                const p2 = getTreeCoordinates(v, originalArray.length);
+                const p1 = getTreeCoordinates(u, originalArray.length, layout.showArray);
+                const p2 = getTreeCoordinates(v, originalArray.length, layout.showArray);
                 const isBacktrack = p1.y < p2.y; // If traveling up the tree, it's a backtrack
                 
                 const travelLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1120,7 +1275,7 @@
         }
         
         // Fade out index labels during tree layout
-        if (layout.type === 'tree') indicesContainer.style.opacity = '0';
+        if (layout.type === 'tree' && !layout.showArray) indicesContainer.style.opacity = '0';
         else indicesContainer.style.opacity = '1';
 
         const maxVal = Math.max(...originalArray.map(a => a.val), 1);
@@ -1174,30 +1329,38 @@
             // 3. Compute Physical Geography based on Layout Mode
             if (inMainIdx !== -1) {
                 // In Main Array. Check Layout Type.
-                if (layout.type === 'tree') {
+                let placeIdx = step.array[inMainIdx].visualIdx !== undefined ? step.array[inMainIdx].visualIdx : inMainIdx;
+
+                if (layout.type === 'tree' && (!isSorted || !layout.showArray)) {
                     // Tree Node morphing
                     newClasses += 'layout-tree ';
-                    const coords = getTreeCoordinates(inMainIdx, originalArray.length);
+                    const coords = getTreeCoordinates(inMainIdx, originalArray.length, layout.showArray);
                     bar.style.left = `${coords.x}%`;
                     bar.style.bottom = `${coords.y}%`;
                     bar.innerText = step.array[inMainIdx].val;
+                    bar.style.height = ''; 
+                    bar.style.width = '';
                 } else if (layout.type === 'merge') {
                     // Merge Sort (Bars with Y offsets)
                     newClasses += 'layout-linear ';
-                    bar.style.left = getLeftPos(inMainIdx, originalArray.length);
+                    bar.style.left = getLeftPos(placeIdx, originalArray.length);
                     bar.style.bottom = `${step.array[inMainIdx].yLevel}%`;
                     bar.style.width = standardWidth;
                     bar.innerText = step.array[inMainIdx].val;
                     bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 75, 10)}%`;
                 } else {
-                    // Standard Linear Layout
+                    // Standard Linear Layout (also catches sorted elements falling out of tree)
                     newClasses += 'layout-linear ';
-                    bar.style.left = getLeftPos(inMainIdx, originalArray.length);
+                    bar.style.left = getLeftPos(placeIdx, originalArray.length);
                     
                     if (layout.type === 'buckets') {
                         // Shrink height of main array so it doesn't overlap buckets
                         bar.style.bottom = '45%'; 
                         bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 45, 10)}%`;
+                    } else if (layout.type === 'tree' && layout.showArray) {
+                        // Shrink height of sorted elements in array so it doesn't overlap tree
+                        bar.style.bottom = '5%';
+                        bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 40, 10)}%`;
                     } else {
                         bar.style.bottom = '15%';
                         bar.style.height = `${Math.max((step.array[inMainIdx].val / maxVal) * 75, 10)}%`;
@@ -1234,7 +1397,7 @@
 
         // Pointers logic
         const mainBaseLine = layout.type === 'buckets' ? '45%' : (layout.type === 'merge' ? '15%' : '15%');
-        if(layout.type !== 'tree') renderMarkers(step.markers, mainBaseLine);
+        if(layout.type !== 'tree') renderMarkers(step, mainBaseLine);
         else {
             // Hide normal markers in tree mode to avoid mess
             document.querySelectorAll('.pointer').forEach(el => el.style.opacity = '0');
@@ -1271,7 +1434,8 @@
         }
     }
 
-    function renderMarkers(markersData, mainBaseLine) {
+    function renderMarkers(step, mainBaseLine) {
+        const markersData = step.markers;
         const existing = document.querySelectorAll('.pointer');
         existing.forEach(el => el.style.opacity = '0');
 
@@ -1294,7 +1458,10 @@
             // Adjust stacking if multiple pointers on same index
             const offset = markersData.filter((x, idx) => x.idx === m.idx && idx < i).length * 16;
             
-            const itemLeft = getLeftPos(m.idx, arrLength);
+            const item = step.array[m.idx];
+            const targetIdx = (item && item.visualIdx !== undefined) ? item.visualIdx : m.idx;
+
+            const itemLeft = getLeftPos(targetIdx, arrLength);
             el.style.left = `calc(${itemLeft} + (${itemWidth} / 2))`;
             el.style.bottom = `calc(${mainBaseLine} - 3rem - ${offset}px)`;
             el.style.transform = `translateX(-50%)`;
